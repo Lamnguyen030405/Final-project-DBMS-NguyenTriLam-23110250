@@ -1,0 +1,180 @@
+USE phone_store_db;
+GO
+
+-- 1. Select all from employees
+SELECT * FROM employees;
+GO
+
+-- 2. Select all from roles
+SELECT * FROM roles;
+GO
+
+-- 3. Select all from users
+SELECT * FROM users;
+GO
+
+-- 4. Select all from user_roles
+SELECT * FROM user_roles;
+GO
+
+-- 5. Select all from customers
+SELECT * FROM customers;
+GO
+
+-- 6. Select all from suppliers
+SELECT * FROM suppliers;
+GO
+
+-- 7. Select all from categories
+SELECT * FROM categories;
+GO
+
+-- 8. Select all from brands
+SELECT * FROM brands;
+GO
+
+-- 9. Select all from products
+SELECT * FROM products;
+GO
+
+-- 10. Select all from inventory
+SELECT * FROM inventory;
+GO
+
+-- 11. Select all from purchase_orders
+SELECT * FROM purchase_orders;
+GO
+
+-- 12. Select all from purchase_order_details
+SELECT * FROM purchase_order_details;
+GO
+
+-- 13. Select all from promotions
+SELECT * FROM promotions;
+GO
+
+-- 14. Select all from orders
+SELECT * FROM orders;
+GO
+
+-- 15. Select all from order_details
+SELECT * FROM order_details;
+GO
+
+-- 16. Select all from payments
+SELECT * FROM payments;
+GO
+
+-- 17. Select all from returns
+SELECT * FROM returns;
+GO
+
+-- 18. Select all from return_details
+SELECT * FROM return_details;
+GO
+
+UPDATE users
+SET password_hash = dbo.HashPassword('default123')
+WHERE username IN ('user_EMP001', 'user_EMP002', 'user_EMP003');
+
+DECLARE @result INT, @user_id INT;
+EXEC LoginUser @username = 'user_EMP001', @password = 'default123', @result = @result OUTPUT, @user_id = @user_id OUTPUT;
+SELECT @result AS Result, @user_id AS UserId;
+
+SELECT username, password_hash, status FROM users WHERE username = 'user_EMP001';
+
+SELECT LOWER(CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', 'default123'), 2));
+
+
+
+PRINT LOWER(CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', 'default123'), 2));
+DECLARE @password_hash NVARCHAR(64) = LOWER(CONVERT(VARCHAR(64), HASHBYTES('SHA2_256', 'default123'), 2));
+
+    SELECT user_id
+    FROM users
+    WHERE username =  'user_EMP001'
+    AND password_hash = @password_hash
+    AND status = 'active';
+
+CREATE FUNCTION dbo.HashPassword (@password NVARCHAR(256))
+RETURNS NVARCHAR(64)
+AS
+BEGIN
+    DECLARE @hash NVARCHAR(64);
+
+    -- Always cast to VARCHAR to avoid NVARCHAR vs VARCHAR mismatches
+    SET @hash = CONVERT(NVARCHAR(64), HASHBYTES('SHA2_256', CAST(@password AS VARCHAR(256))), 2);
+
+    RETURN @hash;
+END;
+GO
+
+
+-- Thêm dữ liệu mẫu cho products
+INSERT INTO products (
+    product_code, 
+    product_name, 
+    category_id, 
+    brand_id, 
+    supplier_id, 
+    description, 
+    specifications, 
+    cost_price, 
+    selling_price, 
+    warranty_period, 
+    image_url, 
+    status
+) VALUES
+('PROD001', 'iPhone 14 Pro Max', 1, 1, 1, 
+    'Điện thoại thông minh cao cấp từ Apple', 
+    '{"RAM": "6GB", "Storage": "256GB", "Screen": "6.7 inch", "Camera": "48MP"}', 
+    25000000.00, 29990000.00, 12, 
+    'https://example.com/images/iphone14promax.jpg', 'active'),
+('PROD002', 'Samsung Galaxy S23 Ultra', 1, 2, 1, 
+    'Điện thoại flagship từ Samsung', 
+    '{"RAM": "8GB", "Storage": "512GB", "Screen": "6.8 inch", "Camera": "200MP"}', 
+    22000000.00, 26990000.00, 12, 
+    'https://example.com/images/galaxys23ultra.jpg', 'active'),
+('PROD003', 'Xiaomi 13 Pro', 1, 3, 2, 
+    'Điện thoại cao cấp từ Xiaomi', 
+    '{"RAM": "12GB", "Storage": "256GB", "Screen": "6.73 inch", "Camera": "50MP"}', 
+    15000000.00, 18990000.00, 12, 
+    'https://example.com/images/xiaomi13pro.jpg', 'active'),
+('PROD004', 'AirPods Pro 2', 2, 1, 1, 
+    'Tai nghe không dây cao cấp từ Apple', 
+    '{"Type": "In-ear", "Battery": "6 hours", "ANC": "Yes"}', 
+    5000000.00, 6990000.00, 6, 
+    'https://example.com/images/airpodspro2.jpg', 'active'),
+('PROD005', 'Samsung Galaxy Tab S8', 3, 2, 1, 
+    'Máy tính bảng hiệu năng cao', 
+    '{"RAM": "8GB", "Storage": "128GB", "Screen": "11 inch"}', 
+    14000000.00, 17990000.00, 12, 
+    'https://example.com/images/galaxytabs8.jpg', 'active'),
+('PROD006', 'Apple Watch Series 8', 4, 1, 1, 
+    'Đồng hồ thông minh cao cấp', 
+    '{"Screen": "1.9 inch", "Battery": "18 hours", "Features": "ECG, SpO2"}', 
+    9000000.00, 11990000.00, 12, 
+    'https://example.com/images/applewatch8.jpg', 'active'),
+('PROD007', 'OPPO Reno8', 1, 4, 2, 
+    'Điện thoại tầm trung từ OPPO', 
+    '{"RAM": "8GB", "Storage": "128GB", "Screen": "6.4 inch", "Camera": "64MP"}', 
+    8000000.00, 9990000.00, 12, 
+    'https://example.com/images/opporeno8.jpg', 'active'),
+('PROD008', 'Vivo Y76', 1, 5, 2, 
+    'Điện thoại giá rẻ từ Vivo', 
+    '{"RAM": "6GB", "Storage": "128GB", "Screen": "6.58 inch", "Camera": "50MP"}', 
+    5000000.00, 6990000.00, 12, 
+    'https://example.com/images/vivoy76.jpg', 'active');
+GO
+
+INSERT INTO inventory (product_id, quantity_on_hand, quantity_reserved, min_stock_level, max_stock_level)
+VALUES
+(1, 50, 5, 10, 100), -- iPhone 14 Pro Max
+(2, 40, 3, 15, 80),  -- Samsung Galaxy S23 Ultra
+(3, 60, 10, 20, 120), -- Xiaomi 13 Pro
+(4, 100, 20, 30, 200), -- AirPods Pro 2
+(5, 30, 5, 10, 50),  -- Samsung Galaxy Tab S8
+(6, 25, 2, 5, 40),   -- Apple Watch Series 8
+(7, 70, 15, 20, 150), -- OPPO Reno8
+(8, 80, 10, 25, 160); -- Vivo Y76
+GO

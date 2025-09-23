@@ -1,0 +1,71 @@
+## Ignore Visual Studio temporary files, build results, and
+## user-specific files
+
+# Build results
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+TestResults/
+*.exe
+*.dll
+*.app
+*.pdb
+*.cache
+*.mdb
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# MonoDevelop
+*.pidb
+*.userprefs
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# Visual Studio Code
+.vscode/
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# VS Folder
+.vs/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+# Uncomment if you have tasks that download packages in `tools/`
+# tools/packages/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Others
+*.log
+*.bak
+*.tmp
+*.tmp.*
+*.old
+*.orig
+
+# Publish output
+publish/
+*.Publish.xml
+
+# IIS Express
+.*/iisexpress/
+*.vspscc
+*.vssscc

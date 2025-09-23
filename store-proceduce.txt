@@ -1,0 +1,69 @@
+CREATE PROCEDURE sp_GetDashboardStats
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @today DATE = CAST(GETDATE() AS DATE);
+    DECLARE @month_start DATE = DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1);
+
+    SELECT 
+        -- Today's stats
+        COALESCE(SUM(CASE WHEN CAST(o.order_date AS DATE) = @today AND o.order_status = 'completed' THEN o.total_amount END), 0) AS today_revenue,
+        COALESCE(COUNT(CASE WHEN CAST(o.order_date AS DATE) = @today AND o.order_status = 'completed' THEN 1 END), 0) AS today_orders,
+
+        -- Month stats
+        COALESCE(SUM(CASE WHEN CAST(o.order_date AS DATE) >= @month_start AND o.order_status = 'completed' THEN o.total_amount END), 0) AS month_revenue,
+        COALESCE(COUNT(CASE WHEN CAST(o.order_date AS DATE) >= @month_start AND o.order_status = 'completed' THEN 1 END), 0) AS month_orders,
+
+        -- Other stats
+        COALESCE(AVG(CASE WHEN o.order_status = 'completed' THEN o.total_amount END), 0) AS avg_order_value,
+        (SELECT COUNT(*) FROM customers) AS total_customers,
+        (SELECT COUNT(*) FROM inventory i WHERE i.quantity_on_hand <= i.min_stock_level) AS low_stock_products
+    FROM orders o;
+END;
+
+
+
+CREATE PROCEDURE sp_GetCustomerByPhone
+    @phone NVARCHAR(20)
+AS
+BEGIN
+    SELECT c.*, 
+           COUNT(o.order_id) AS total_orders,
+           COALESCE(MAX(o.order_date), c.created_at) AS last_order_date
+    FROM customers c
+    LEFT JOIN orders o 
+        ON c.customer_id = o.customer_id 
+       AND o.order_status = 'completed'
+    WHERE c.phone = @phone
+    GROUP BY 
+        c.customer_id, c.customer_code, c.full_name, c.phone, c.email, 
+        c.address, c.date_of_birth, c.gender, c.customer_type, 
+        c.total_spent, c.created_at, c.updated_at
+END
+
+
+CREATE PROCEDURE sp_GetAllProducts
+AS
+BEGIN
+    SELECT 
+        p.*, 
+        c.category_name, 
+        b.brand_name, 
+        COALESCE(i.quantity_on_hand, 0) AS quantity_on_hand
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.category_id
+    LEFT JOIN brands b ON p.brand_id = b.brand_id
+    LEFT JOIN inventory i ON p.product_id = i.product_id
+    WHERE p.status = 'active'
+    ORDER BY p.product_name;
+END
+
+CREATE PROCEDURE sp_GetProductStock
+    @productId INT
+AS
+BEGIN
+    SELECT COALESCE(quantity_on_hand, 0)
+    FROM inventory
+    WHERE product_id = @productId;
+END
