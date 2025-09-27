@@ -1,4 +1,5 @@
-﻿using PhoneStore.Services;
+﻿using PhoneStore.Configs;
+using PhoneStore.Services;
 using PhoneStore.Utils;
 using System;
 using System.Collections.Generic;
@@ -28,7 +29,7 @@ namespace PhoneStore.Forms
             try
             {
                 // Test database connection
-                if (!Configs.DBConnection.TestConnection())
+                if (!Configs.DBConnection.TestDefaultConnection())
                 {
                     ExceptionHandler.ShowValidationError("Không thể kết nối đến cơ sở dữ liệu. Vui lòng kiểm tra lại cấu hình kết nối.");
                     return;
@@ -60,6 +61,9 @@ namespace PhoneStore.Forms
 
             try
             {
+                DBConnection.Username = txtUsername.Text.Trim();
+                DBConnection.Password = txtPassword.Text.Trim();
+
                 var result = authService.Login(txtUsername.Text.Trim(), txtPassword.Text.Trim());
 
                 if (result.Success)

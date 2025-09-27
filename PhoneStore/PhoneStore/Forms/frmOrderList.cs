@@ -356,12 +356,12 @@ NGÀY TẠO: {order.CreatedAt:dd/MM/yyyy HH:mm}";
                     return;
                 }
 
-                // Check permission
-                if (!SessionManager.IsManager && !SessionManager.IsCashier)
-                {
-                    ExceptionHandler.ShowValidationError("Bạn không có quyền cập nhật trạng thái đơn hàng.");
-                    return;
-                }
+                //// Check permission
+                //if (!SessionManager.IsManager && !SessionManager.IsCashier)
+                //{
+                //    ExceptionHandler.ShowValidationError("Bạn không có quyền cập nhật trạng thái đơn hàng.");
+                //    return;
+                //}
 
                 // Check if order can be updated
                 if (!CanUpdateOrderStatus(selectedOrder))
@@ -572,6 +572,7 @@ NGÀY TẠO: {order.CreatedAt:dd/MM/yyyy HH:mm}";
                 SetupKeyboardShortcuts();
                 LoadOrders();
                 selectedOrder = dgvOrders.SelectedRows[0].Tag as Order;
+                UpdateButtonStates();
                 LoadOrderDetails(selectedOrder);
                 LoadEmployeeList();
             }

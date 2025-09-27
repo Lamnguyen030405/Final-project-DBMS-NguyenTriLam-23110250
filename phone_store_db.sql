@@ -5,12 +5,12 @@
 -- =====================================================
 
 -- Tạo cơ sở dữ liệu
-IF DB_ID('phone_store_db') IS NOT NULL
-    DROP DATABASE phone_store_db;
+IF DB_ID('phone_store_db_1') IS NOT NULL
+    DROP DATABASE phone_store_db_1;
 GO
-CREATE DATABASE phone_store_db;
+CREATE DATABASE phone_store_db_1;
 GO
-USE phone_store_db;
+USE phone_store_db_1;
 GO
 
 -- =====================================================
@@ -163,45 +163,9 @@ CREATE TABLE inventory (
 );
 GO
 
--- =====================================================
--- 2. BẢNG QUẢN LÝ NHẬP HÀNG
--- =====================================================
-
--- Bảng Đơn nhập hàng
-CREATE TABLE purchase_orders (
-    purchase_order_id INT IDENTITY(1,1) PRIMARY KEY,
-    order_code NVARCHAR(20) UNIQUE NOT NULL,
-    supplier_id INT,
-    employee_id INT, -- Nhân viên tạo đơn
-    order_date DATE,
-    expected_delivery_date DATE,
-    actual_delivery_date DATE,
-    total_amount DECIMAL(15,2),
-    status NVARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'delivered', 'cancelled')),
-    notes NVARCHAR(MAX),
-    created_at DATETIME DEFAULT GETDATE(),
-    updated_at DATETIME DEFAULT GETDATE(),
-    CONSTRAINT FK_purchase_orders_suppliers FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id),
-    CONSTRAINT FK_purchase_orders_employees FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
-);
-GO
-
--- Bảng Chi tiết đơn nhập hàng
-CREATE TABLE purchase_order_details (
-    detail_id INT IDENTITY(1,1) PRIMARY KEY,
-    purchase_order_id INT,
-    product_id INT,
-    quantity INT NOT NULL,
-    unit_cost DECIMAL(15,2),
-    total_cost DECIMAL(15,2),
-    received_quantity INT DEFAULT 0,
-    CONSTRAINT FK_purchase_order_details_purchase_orders FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders(purchase_order_id),
-    CONSTRAINT FK_purchase_order_details_products FOREIGN KEY (product_id) REFERENCES products(product_id)
-);
-GO
 
 -- =====================================================
--- 3. BẢNG QUẢN LÝ KHUYẾN MÃI
+-- 4. BẢNG QUẢN LÝ KHUYẾN MÃI
 -- =====================================================
 
 -- Bảng Khuyến mãi
@@ -225,7 +189,7 @@ CREATE TABLE promotions (
 GO
 
 -- =====================================================
--- 4. BẢNG QUẢN LÝ BÁN HÀNG
+-- 5. BẢNG QUẢN LÝ BÁN HÀNG
 -- =====================================================
 
 -- Bảng Đơn hàng
@@ -280,44 +244,6 @@ CREATE TABLE payments (
     notes NVARCHAR(MAX),
     created_at DATETIME DEFAULT GETDATE(),
     CONSTRAINT FK_payments_orders FOREIGN KEY (order_id) REFERENCES orders(order_id)
-);
-GO
-
--- =====================================================
--- 5. BẢNG QUẢN LÝ TRẢ HÀNG
--- =====================================================
-
--- Bảng Trả hàng
-CREATE TABLE returns (
-    return_id INT IDENTITY(1,1) PRIMARY KEY,
-    return_code NVARCHAR(20) UNIQUE NOT NULL,
-    order_id INT,
-    customer_id INT,
-    employee_id INT, -- Nhân viên xử lý
-    return_date DATE,
-    reason NVARCHAR(MAX),
-    return_type NVARCHAR(20) CHECK (return_type IN ('defective', 'wrong_item', 'customer_request')),
-    total_refund_amount DECIMAL(15,2),
-    status NVARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'completed')),
-    created_at DATETIME DEFAULT GETDATE(),
-    updated_at DATETIME DEFAULT GETDATE(),
-    CONSTRAINT FK_returns_orders FOREIGN KEY (order_id) REFERENCES orders(order_id),
-    CONSTRAINT FK_returns_customers FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
-    CONSTRAINT FK_returns_employees FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
-);
-GO
-
--- Bảng Chi tiết trả hàng
-CREATE TABLE return_details (
-    detail_id INT IDENTITY(1,1) PRIMARY KEY,
-    return_id INT,
-    product_id INT,
-    quantity INT,
-    reason NVARCHAR(MAX),
-    condition_note NVARCHAR(MAX), -- Tình trạng sản phẩm
-    refund_amount DECIMAL(15,2),
-    CONSTRAINT FK_return_details_returns FOREIGN KEY (return_id) REFERENCES returns(return_id),
-    CONSTRAINT FK_return_details_products FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 GO
 
@@ -381,14 +307,63 @@ BEGIN
 END;
 GO
 
+-- Procedure tạo user và phân quyền
+CREATE PROCEDURE sp_CreateDatabaseUser
+    @username NVARCHAR(50),
+    @password NVARCHAR(256),
+    @role_name NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    BEGIN TRY
+        -- Tạo login
+        DECLARE @sql NVARCHAR(MAX);
+        SET @sql = 'CREATE LOGIN [' + @username + '] WITH PASSWORD = ''' + @password + '''';
+        EXEC sp_executesql @sql;
+        
+        -- Tạo user trong database
+        SET @sql = 'CREATE USER [' + @username + '] FOR LOGIN [' + @username + ']';
+        EXEC sp_executesql @sql;
+        
+        -- Phân quyền role
+        DECLARE @database_role NVARCHAR(50);
+        SET @database_role = CASE @role_name
+            WHEN 'Admin' THEN 'db_admin'
+            WHEN 'Manager' THEN 'db_manager'
+            WHEN 'Cashier' THEN 'db_cashier'
+            WHEN 'Salesperson' THEN 'db_salesperson'
+            WHEN 'Staff' THEN 'db_staff'
+            ELSE NULL
+        END;
+        
+        IF @database_role IS NOT NULL
+        BEGIN
+            SET @sql = 'ALTER ROLE ' + @database_role + ' ADD MEMBER [' + @username + ']';
+            EXEC sp_executesql @sql;
+        END
+        
+        SELECT 1 as Result, 'User created and permissions assigned successfully' as Message;
+        
+    END TRY
+    BEGIN CATCH
+        SELECT 0 as Result, ERROR_MESSAGE() as Message;
+    END CATCH
+END;
+GO
+
 -- Trigger tự động tạo tài khoản người dùng khi thêm nhân viên
 CREATE TRIGGER tr_employees_insert
 ON employees
 AFTER INSERT
 AS
 BEGIN
-    DECLARE @employee_id INT, @employee_code NVARCHAR(20), @username NVARCHAR(50), @default_password NVARCHAR(256);
-    SET @default_password = dbo.HashPassword('default123'); -- Mật khẩu mặc định: default123
+    SET NOCOUNT ON;
+
+    DECLARE @employee_id INT, @employee_code NVARCHAR(20), @username NVARCHAR(50);
+    DECLARE @default_password NVARCHAR(50) = 'default123'; -- Plain password dùng cho SQL Login
+    DECLARE @position NVARCHAR(50);
+    DECLARE @role_name NVARCHAR(50);
 
     DECLARE employee_cursor CURSOR FOR
     SELECT employee_id, employee_code FROM inserted;
@@ -401,19 +376,29 @@ BEGIN
         -- Tạo username từ employee_code
         SET @username = 'user_' + @employee_code;
 
-        -- Thêm vào bảng users
-        INSERT INTO users (username, password_hash, employee_id, status)
-        VALUES (@username, @default_password, @employee_id, 'active');
+        -- Lấy vị trí (position) của nhân viên
+        SELECT @position = position FROM employees WHERE employee_id = @employee_id;
 
-        -- Gán vai trò mặc định dựa trên position
-        DECLARE @role_id INT;
-        SELECT @role_id = role_id FROM roles 
-        WHERE role_name = CASE 
-            WHEN (SELECT position FROM employees WHERE employee_id = @employee_id) = 'Quản lý' THEN 'Manager'
-            WHEN (SELECT position FROM employees WHERE employee_id = @employee_id) = 'Thu ngân' THEN 'Cashier'
-            WHEN (SELECT position FROM employees WHERE employee_id = @employee_id) = 'Bán hàng' THEN 'Salesperson'
+        -- Xác định role name từ position
+        SET @role_name = CASE 
+            WHEN @position = N'Quản lý' THEN 'Manager'
+            WHEN @position = N'Thu ngân' THEN 'Cashier'
+            WHEN @position = N'Bán hàng' THEN 'Salesperson'
             ELSE 'Staff'
         END;
+
+        -- Thêm vào bảng users (dùng mật khẩu đã hash để lưu riêng cho ứng dụng)
+        INSERT INTO users (username, password_hash, employee_id, status)
+        VALUES (
+            @username,
+            dbo.HashPassword(@default_password),
+            @employee_id,
+            'active'
+        );
+
+        -- Gán vai trò (ghi vào bảng user_roles như cũ)
+        DECLARE @role_id INT;
+        SELECT @role_id = role_id FROM roles WHERE role_name = @role_name;
 
         IF @role_id IS NOT NULL
         BEGIN
@@ -421,13 +406,15 @@ BEGIN
             SELECT user_id, @role_id FROM users WHERE employee_id = @employee_id;
         END
 
+        -- Gọi stored procedure để tạo SQL login/user và phân quyền thực tế
+        EXEC sp_CreateDatabaseUser @username = @username, @password = @default_password, @role_name = @role_name;
+
         FETCH NEXT FROM employee_cursor INTO @employee_id, @employee_code;
     END;
 
     CLOSE employee_cursor;
     DEALLOCATE employee_cursor;
 END;
-GO
 
 -- Trigger cập nhật thời gian updated_at
 CREATE TRIGGER tr_employees_update
@@ -514,18 +501,6 @@ BEGIN
 END;
 GO
 
-CREATE TRIGGER tr_purchase_orders_update
-ON purchase_orders
-AFTER UPDATE
-AS
-BEGIN
-    UPDATE purchase_orders
-    SET updated_at = GETDATE()
-    FROM inserted
-    WHERE purchase_orders.purchase_order_id = inserted.purchase_order_id;
-END;
-GO
-
 CREATE TRIGGER tr_promotions_update
 ON promotions
 AFTER UPDATE
@@ -550,17 +525,6 @@ BEGIN
 END;
 GO
 
-CREATE TRIGGER tr_returns_update
-ON returns
-AFTER UPDATE
-AS
-BEGIN
-    UPDATE returns
-    SET updated_at = GETDATE()
-    FROM inserted
-    WHERE returns.return_id = inserted.return_id;
-END;
-GO
 
 -- Trigger cập nhật tồn kho khi có đơn hàng
 CREATE TRIGGER update_inventory_after_order
@@ -640,6 +604,7 @@ BEGIN
             AND ISNULL(i.total_spent, 0) >= 50000000;
     END
 END;
+GO
 
 -- Trigger cập nhật số lần sử dụng khuyến mãi
 CREATE TRIGGER update_promotion_usage
@@ -723,53 +688,6 @@ GROUP BY p.product_id, p.product_name, p.product_code, b.brand_name, c.category_
 ORDER BY total_sold DESC;
 GO
 
--- View khách hàng VIP
-CREATE VIEW vip_customers AS
-SELECT TOP 100 PERCENT
-    c.customer_id,
-    c.customer_code,
-    c.full_name,
-    c.phone,
-    c.email,
-    c.customer_type,
-    c.total_spent,
-    COUNT(o.order_id) AS total_orders,
-    AVG(o.total_amount) AS avg_order_value,
-    MAX(o.order_date) AS last_order_date,
-    DATEDIFF(DAY, MAX(o.order_date), GETDATE()) AS days_since_last_order
-FROM customers c
-LEFT JOIN orders o ON c.customer_id = o.customer_id AND o.order_status = 'completed'
-WHERE c.customer_type = 'vip' OR c.total_spent > 10000000
-GROUP BY c.customer_id, c.customer_code, c.full_name, c.phone, c.email, c.customer_type, c.total_spent
-ORDER BY c.total_spent DESC;
-GO
-
--- View tồn kho cảnh báo
-CREATE VIEW low_stock_alert AS
-SELECT TOP 100 PERCENT
-    p.product_id,
-    p.product_name,
-    p.product_code,
-    b.brand_name,
-    c.category_name,
-    i.quantity_on_hand,
-    i.quantity_reserved,
-    i.min_stock_level,
-    i.max_stock_level,
-    (i.min_stock_level - i.quantity_on_hand) AS shortage,
-    p.selling_price,
-    s.company_name AS supplier_name,
-    s.phone AS supplier_phone
-FROM products p
-INNER JOIN inventory i ON p.product_id = i.product_id
-LEFT JOIN brands b ON p.brand_id = b.brand_id
-LEFT JOIN categories c ON p.category_id = c.category_id
-LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
-WHERE i.quantity_on_hand <= i.min_stock_level
-AND p.status = 'active'
-ORDER BY (i.min_stock_level - i.quantity_on_hand) DESC;
-GO
-
 -- View báo cáo hiệu suất nhân viên
 CREATE VIEW employee_performance AS
 SELECT TOP 100 PERCENT
@@ -810,69 +728,267 @@ GROUP BY p.product_id, p.product_name, p.cost_price, p.selling_price
 ORDER BY total_profit DESC;
 GO
 
+-- View báo cáo sản phẩm có sẵn
+CREATE VIEW v_AllActiveProducts
+AS
+SELECT 
+    p.*, 
+    c.category_name, 
+    b.brand_name, 
+    COALESCE(i.quantity_on_hand, 0) AS quantity_on_hand
+FROM products p
+LEFT JOIN categories c ON p.category_id = c.category_id
+LEFT JOIN brands b ON p.brand_id = b.brand_id
+LEFT JOIN inventory i ON p.product_id = i.product_id
+WHERE p.status = 'active';
+GO
+
+-- View báo cáo nhân viên hoạt động
+CREATE VIEW v_ActiveEmployees
+AS
+SELECT 
+    employee_id, 
+    employee_code, 
+    full_name, 
+    position, 
+    status
+FROM employees
+WHERE status = 'active';	
+GO
+
 -- =====================================================
 -- 9. THÊM DỮ LIỆU MẪU
 -- =====================================================
 
 -- Thêm dữ liệu mẫu cho roles
 INSERT INTO roles (role_name, description) VALUES
-('Admin', 'Quản trị viên hệ thống, có toàn quyền'),
-('Manager', 'Quản lý cửa hàng, quản lý nhân viên và đơn hàng'),
-('Cashier', 'Thu ngân, xử lý thanh toán'),
-('Salesperson', 'Nhân viên bán hàng, tạo đơn hàng'),
-('Staff', 'Nhân viên cơ bản, hỗ trợ các công việc khác');
+('Admin', N'Quản trị viên hệ thống, có toàn quyền'),
+('Manager', N'Quản lý cửa hàng, quản lý nhân viên và đơn hàng'),
+('Cashier', N'Thu ngân, xử lý thanh toán'),
+('Salesperson', N'Nhân viên bán hàng, tạo đơn hàng'),
+('Staff', N'Nhân viên cơ bản, hỗ trợ các công việc khác');
 GO
 
 -- Thêm dữ liệu mẫu cho categories
 INSERT INTO categories (category_name, description) VALUES
-('Điện thoại', 'Điện thoại thông minh các loại'),
-('Phụ kiện', 'Phụ kiện điện thoại'),
-('Tablet', 'Máy tính bảng'),
-('Đồng hồ thông minh', 'Smart watch các loại');
+(N'Điện thoại', N'Điện thoại thông minh các loại'),
+(N'Phụ kiện', N'Phụ kiện điện thoại'),
+(N'Tablet', N'Máy tính bảng'),
+(N'Đồng hồ thông minh', N'Smart watch các loại');
 GO
 
 -- Thêm dữ liệu mẫu cho brands
 INSERT INTO brands (brand_name, country_origin, description) VALUES
-('Apple', 'USA', 'Thương hiệu công nghệ hàng đầu'),
-('Samsung', 'South Korea', 'Tập đoàn công nghệ Hàn Quốc'),
-('Xiaomi', 'China', 'Thương hiệu công nghệ Trung Quốc'),
-('OPPO', 'China', 'Thương hiệu điện thoại'),
-('Vivo', 'China', 'Thương hiệu điện thoại');
+('Apple', 'USA', N'Thương hiệu công nghệ hàng đầu'),
+('Samsung', 'South Korea', N'Tập đoàn công nghệ Hàn Quốc'),
+('Xiaomi', 'China', N'Thương hiệu công nghệ Trung Quốc'),
+('OPPO', 'China', N'Thương hiệu điện thoại'),
+('Vivo', 'China', N'Thương hiệu điện thoại');
 GO
 
 -- Thêm dữ liệu mẫu cho suppliers
 INSERT INTO suppliers (supplier_code, company_name, contact_person, phone, email, address) VALUES
-('SUP001', 'Công ty TNHH Phân phối A', 'Nguyễn Văn A', '0901234567', 'contact@supplier-a.com', '123 Đường ABC, Quận 1, TP.HCM'),
-('SUP002', 'Công ty Cổ phần Thương mại B', 'Trần Thị B', '0902345678', 'info@supplier-b.com', '456 Đường DEF, Quận 3, TP.HCM');
+('SUP001', N'Công ty TNHH Phân phối A', N'Nguyễn Văn A', '0901234567', 'contact@supplier-a.com', N'123 Đường ABC, Quận 1, TP.HCM'),
+('SUP002', N'Công ty Cổ phần Thương mại B', N'Trần Thị B', '0902345678', 'info@supplier-b.com', N'456 Đường DEF, Quận 3, TP.HCM');
 GO
 
 -- Thêm dữ liệu mẫu cho employees (tự động tạo users và user_roles qua trigger)
 INSERT INTO employees (employee_code, full_name, phone, email, position, hire_date, salary) VALUES
-('EMP001', 'Nguyễn Văn Nam', '0911111111', 'nam@phonestore.com', 'Quản lý', '2023-01-01', 15000000),
-('EMP002', 'Trần Thị Lan', '0922222222', 'lan@phonestore.com', 'Thu ngân', '2023-02-01', 8000000),
-('EMP003', 'Lê Văn Hùng', '0933333333', 'hung@phonestore.com', 'Bán hàng', '2023-03-01', 10000000);
+('EMP001', N'Nguyễn Văn Nam', '0911111111', 'nam@phonestore.com', N'Quản lý', '2023-01-01', 15000000),
+('EMP002', N'Trần Thị Lan', '0922222222', 'lan@phonestore.com', N'Thu ngân', '2023-02-01', 8000000),
+('EMP003', N'Lê Văn Hùng', '0933333333', 'hung@phonestore.com', N'Bán hàng', '2023-03-01', 10000000);
 GO
 
 -- Thêm dữ liệu mẫu cho customers
 INSERT INTO customers (customer_code, full_name, phone, email, address, customer_type) VALUES
-('CUS001', 'Phạm Văn Khách', '0944444444', 'khach@email.com', '789 Đường GHI, Quận 5, TP.HCM', 'regular'),
-('CUS002', 'Hoàng Thị Mai', '0955555555', 'mai@email.com', '321 Đường JKL, Quận 7, TP.HCM', 'vip');
+('CUS001', N'Phạm Văn Khách', '0944444444', 'khach@email.com', N'789 Đường GHI, Quận 5, TP.HCM', 'regular'),
+('CUS002', N'Hoàng Thị Mai', '0955555555', 'mai@email.com', N'321 Đường JKL, Quận 7, TP.HCM', 'vip');
+GO
+
+-- Thêm dữ liệu mẫu cho products
+INSERT INTO products (
+    product_code, 
+    product_name, 
+    category_id, 
+    brand_id, 
+    supplier_id, 
+    description, 
+    specifications, 
+    cost_price, 
+    selling_price, 
+    warranty_period, 
+    image_url, 
+    status
+) VALUES
+('PROD001', 'iPhone 14 Pro Max', 1, 1, 1, 
+    'Điện thoại thông minh cao cấp từ Apple', 
+    '{"RAM": "6GB", "Storage": "256GB", "Screen": "6.7 inch", "Camera": "48MP"}', 
+    25000000.00, 29990000.00, 12, 
+    'https://example.com/images/iphone14promax.jpg', 'active'),
+('PROD002', 'Samsung Galaxy S23 Ultra', 1, 2, 1, 
+    'Điện thoại flagship từ Samsung', 
+    '{"RAM": "8GB", "Storage": "512GB", "Screen": "6.8 inch", "Camera": "200MP"}', 
+    22000000.00, 26990000.00, 12, 
+    'https://example.com/images/galaxys23ultra.jpg', 'active'),
+('PROD003', 'Xiaomi 13 Pro', 1, 3, 2, 
+    'Điện thoại cao cấp từ Xiaomi', 
+    '{"RAM": "12GB", "Storage": "256GB", "Screen": "6.73 inch", "Camera": "50MP"}', 
+    15000000.00, 18990000.00, 12, 
+    'https://example.com/images/xiaomi13pro.jpg', 'active'),
+('PROD004', 'AirPods Pro 2', 2, 1, 1, 
+    'Tai nghe không dây cao cấp từ Apple', 
+    '{"Type": "In-ear", "Battery": "6 hours", "ANC": "Yes"}', 
+    5000000.00, 6990000.00, 6, 
+    'https://example.com/images/airpodspro2.jpg', 'active'),
+('PROD005', 'Samsung Galaxy Tab S8', 3, 2, 1, 
+    'Máy tính bảng hiệu năng cao', 
+    '{"RAM": "8GB", "Storage": "128GB", "Screen": "11 inch"}', 
+    14000000.00, 17990000.00, 12, 
+    'https://example.com/images/galaxytabs8.jpg', 'active'),
+('PROD006', 'Apple Watch Series 8', 4, 1, 1, 
+    'Đồng hồ thông minh cao cấp', 
+    '{"Screen": "1.9 inch", "Battery": "18 hours", "Features": "ECG, SpO2"}', 
+    9000000.00, 11990000.00, 12, 
+    'https://example.com/images/applewatch8.jpg', 'active'),
+('PROD007', 'OPPO Reno8', 1, 4, 2, 
+    'Điện thoại tầm trung từ OPPO', 
+    '{"RAM": "8GB", "Storage": "128GB", "Screen": "6.4 inch", "Camera": "64MP"}', 
+    8000000.00, 9990000.00, 12, 
+    'https://example.com/images/opporeno8.jpg', 'active'),
+('PROD008', 'Vivo Y76', 1, 5, 2, 
+    'Điện thoại giá rẻ từ Vivo', 
+    '{"RAM": "6GB", "Storage": "128GB", "Screen": "6.58 inch", "Camera": "50MP"}', 
+    5000000.00, 6990000.00, 12, 
+    'https://example.com/images/vivoy76.jpg', 'active');
+GO
+
+INSERT INTO inventory (product_id, quantity_on_hand, quantity_reserved, min_stock_level, max_stock_level)
+VALUES
+(1, 50, 5, 10, 100), -- iPhone 14 Pro Max
+(2, 40, 3, 15, 80),  -- Samsung Galaxy S23 Ultra
+(3, 60, 10, 20, 120), -- Xiaomi 13 Pro
+(4, 100, 20, 30, 200), -- AirPods Pro 2
+(5, 30, 5, 10, 50),  -- Samsung Galaxy Tab S8
+(6, 25, 2, 5, 40),   -- Apple Watch Series 8
+(7, 70, 15, 20, 150), -- OPPO Reno8
+(8, 80, 10, 25, 160); -- Vivo Y76
+GO
+
+-- =====================================================
+-- 11. TẠO FUNCTION HỖ TRỢ
+-- =====================================================
+
+-- Function tạo order code tự động
+CREATE FUNCTION fn_GenerateOrderCode()
+RETURNS NVARCHAR(50)
+AS
+BEGIN
+    DECLARE @prefix NVARCHAR(20) = 'ORD' + FORMAT(GETDATE(), 'yyyyMMdd');
+
+    DECLARE @nextNumber INT = (
+        SELECT COALESCE(MAX(CAST(RIGHT(order_code, 4) AS INT)), 0) + 1
+        FROM orders
+        WHERE order_code LIKE @prefix + '%'
+    );
+
+    DECLARE @code NVARCHAR(50) = @prefix + RIGHT('0000' + CAST(@nextNumber AS NVARCHAR(4)), 4);
+
+    RETURN @code;
+END
+GO
+-- Function tạo customer code tự động
+CREATE FUNCTION fn_GenerateCustomerCode()
+RETURNS NVARCHAR(50)
+AS
+BEGIN
+    DECLARE @prefix NVARCHAR(20) = 'CUS' + FORMAT(GETDATE(), 'yyyyMMdd');
+
+    DECLARE @nextNumber INT = (
+        SELECT COALESCE(MAX(CAST(RIGHT(customer_code, 4) AS INT)), 0) + 1
+        FROM customers
+        WHERE customer_code LIKE @prefix + '%'
+    );
+
+    RETURN @prefix + RIGHT('0000' + CAST(@nextNumber AS NVARCHAR(4)), 4);
+END
+GO
+
+-- Function lấy thông tin thanh toán theo order id
+CREATE FUNCTION fn_GetPaymentSummaryByOrderId (@orderId INT)
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT 
+        o.order_id,
+        o.order_code,
+        o.total_amount AS total_order_amount,
+        COALESCE(SUM(p.amount), 0) AS total_paid_amount,
+        (o.total_amount - COALESCE(SUM(p.amount), 0)) AS remaining_amount,
+        o.payment_status,
+        COUNT(p.payment_id) AS payment_count,
+        MAX(p.payment_date) AS last_payment_date
+    FROM orders o
+    LEFT JOIN payments p ON o.order_id = p.order_id AND p.status = 'successful'
+    WHERE o.order_id = @orderId
+    GROUP BY o.order_id, o.order_code, o.total_amount, o.payment_status
+);
+GO
+-- Function lấy tất cả các order trong khoảng thời gian đã cho
+CREATE FUNCTION fn_GetAllOrders
+(
+    @fromDate DATE = NULL,
+    @toDate DATE = NULL
+)
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT 
+        o.*, 
+        c.full_name AS customer_name, 
+        e.full_name AS employee_name,
+        COUNT(od.detail_id) AS total_items
+    FROM orders o
+    LEFT JOIN customers c ON o.customer_id = c.customer_id
+    LEFT JOIN employees e ON o.employee_id = e.employee_id
+    LEFT JOIN order_details od ON o.order_id = od.order_id
+    WHERE 
+        (@fromDate IS NULL OR CAST(o.order_date AS DATE) >= @fromDate)
+        AND (@toDate IS NULL OR CAST(o.order_date AS DATE) <= @toDate)
+    GROUP BY 
+        o.order_id, o.order_code, o.customer_id, o.employee_id, 
+        o.order_date, o.subtotal, o.discount_amount, o.tax_amount,
+        o.total_amount, o.promotion_id, o.payment_method, o.payment_status,
+        o.order_status, o.notes, o.created_at, o.updated_at,
+        c.full_name, e.full_name
+);
+GO
+-- Function lấy báo cáo bán doanh thu theo ngày trong khoảng thời gian đã cho
+CREATE FUNCTION fn_GetDailySalesReport
+(
+    @fromDate DATE,
+    @toDate DATE
+)
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT 
+        CAST(order_date AS DATE) AS report_date,
+        COUNT(*) AS total_orders,
+        SUM(total_amount) AS total_revenue,
+        AVG(total_amount) AS avg_order_value
+    FROM orders 
+    WHERE order_status = 'completed'
+      AND CAST(order_date AS DATE) BETWEEN @fromDate AND @toDate
+    GROUP BY CAST(order_date AS DATE)
+);
 GO
 
 -- =====================================================
 -- 10. TẠO STORED PROCEDURES HỖ TRỢ
 -- =====================================================
-
--- Procedure tạo mã tự động
-CREATE PROCEDURE GenerateOrderCode
-    @order_code NVARCHAR(20) OUTPUT
-AS
-BEGIN
-    DECLARE @next_id INT;
-    SELECT @next_id = COALESCE(MAX(order_id), 0) + 1 FROM orders;
-    SET @order_code = 'ORD' + FORMAT(GETDATE(), 'yyyyMMdd') + RIGHT('0000' + CAST(@next_id AS NVARCHAR(4)), 4);
-END;
-GO
 
 -- Procedure báo cáo doanh thu theo khoảng thời gian
 CREATE PROCEDURE GetRevenueReport
@@ -891,67 +1007,6 @@ BEGIN
     AND o.order_status IN ('completed', 'processing')
     GROUP BY CAST(o.order_date AS DATE)
     ORDER BY report_date;
-END;
-GO
-
--- Procedure cập nhật loại khách hàng dựa trên tổng chi tiêu
-CREATE PROCEDURE UpdateCustomerTypes
-AS
-BEGIN
-    UPDATE customers 
-    SET customer_type = 'vip' 
-    WHERE total_spent >= 50000000 AND customer_type = 'regular';
-END;
-GO
-
--- Procedure đăng ký người dùng
-CREATE PROCEDURE RegisterUser
-    @username NVARCHAR(50),
-    @password NVARCHAR(256),
-    @employee_id INT,
-    @role_name NVARCHAR(50),
-    @result INT OUTPUT -- 1: Thành công, 0: Thất bại
-AS
-BEGIN
-    SET NOCOUNT ON;
-    BEGIN TRY
-        -- Kiểm tra username đã tồn tại
-        IF EXISTS (SELECT 1 FROM users WHERE username = @username)
-        BEGIN
-            SET @result = 0;
-            RETURN;
-        END
-
-        -- Kiểm tra employee_id hợp lệ
-        IF NOT EXISTS (SELECT 1 FROM employees WHERE employee_id = @employee_id)
-        BEGIN
-            SET @result = 0;
-            RETURN;
-        END
-
-        -- Băm mật khẩu
-        DECLARE @password_hash NVARCHAR(64) = dbo.HashPassword(@password);
-
-        -- Thêm người dùng
-        INSERT INTO users (username, password_hash, employee_id, status)
-        VALUES (@username, @password_hash, @employee_id, 'active');
-
-        -- Gán vai trò
-        DECLARE @user_id INT = SCOPE_IDENTITY();
-        DECLARE @role_id INT;
-        SELECT @role_id = role_id FROM roles WHERE role_name = @role_name;
-
-        IF @role_id IS NOT NULL
-        BEGIN
-            INSERT INTO user_roles (user_id, role_id)
-            VALUES (@user_id, @role_id);
-        END
-
-        SET @result = 1;
-    END TRY
-    BEGIN CATCH
-        SET @result = 0;
-    END CATCH
 END;
 GO
 
@@ -998,6 +1053,637 @@ BEGIN
     WHERE ur.user_id = @user_id;
 END;
 GO
+
+-- Procedure lấy dashboard
+CREATE PROCEDURE sp_GetDashboardStats
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @today DATE = CAST(GETDATE() AS DATE);
+    DECLARE @month_start DATE = DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1);
+
+    SELECT 
+        -- Today's stats
+        COALESCE(SUM(CASE WHEN CAST(o.order_date AS DATE) = @today AND o.order_status = 'completed' THEN o.total_amount END), 0) AS today_revenue,
+        COALESCE(COUNT(CASE WHEN CAST(o.order_date AS DATE) = @today AND o.order_status = 'completed' THEN 1 END), 0) AS today_orders,
+
+        -- Month stats
+        COALESCE(SUM(CASE WHEN CAST(o.order_date AS DATE) >= @month_start AND o.order_status = 'completed' THEN o.total_amount END), 0) AS month_revenue,
+        COALESCE(COUNT(CASE WHEN CAST(o.order_date AS DATE) >= @month_start AND o.order_status = 'completed' THEN 1 END), 0) AS month_orders,
+
+        -- Other stats
+        COALESCE(AVG(CASE WHEN o.order_status = 'completed' THEN o.total_amount END), 0) AS avg_order_value,
+        (SELECT COUNT(*) FROM customers) AS total_customers,
+        (SELECT COUNT(*) FROM inventory i WHERE i.quantity_on_hand <= i.min_stock_level) AS low_stock_products
+    FROM orders o;
+END;
+GO
+
+-- Procedure lấy số lượng sản phẩm tồn kho
+CREATE PROCEDURE sp_GetProductStock
+    @productId INT
+AS
+BEGIN
+    SELECT COALESCE(quantity_on_hand, 0)
+    FROM inventory
+    WHERE product_id = @productId;
+END
+GO
+
+-- Procedure lấy sản phẩm theo id
+CREATE PROCEDURE sp_GetProductById
+    @productId INT
+AS
+BEGIN
+    SELECT 
+        p.*, 
+        c.category_name, 
+        b.brand_name, 
+        COALESCE(i.quantity_on_hand, 0) AS quantity_on_hand
+    FROM products p
+    LEFT JOIN categories c ON p.category_id = c.category_id
+    LEFT JOIN brands b ON p.brand_id = b.brand_id
+    LEFT JOIN inventory i ON p.product_id = i.product_id
+    WHERE p.product_id = @productId;
+END
+GO
+
+-- Procedure lấy khách hàng theo số điện thoại
+CREATE PROCEDURE sp_GetCustomerByPhone
+    @phone NVARCHAR(20)
+AS
+BEGIN
+    SELECT c.*, 
+           COUNT(o.order_id) AS total_orders,
+           COALESCE(MAX(o.order_date), c.created_at) AS last_order_date
+    FROM customers c
+    LEFT JOIN orders o 
+        ON c.customer_id = o.customer_id 
+       AND o.order_status = 'completed'
+    WHERE c.phone = @phone
+    GROUP BY 
+        c.customer_id, c.customer_code, c.full_name, c.phone, c.email, 
+        c.address, c.date_of_birth, c.gender, c.customer_type, 
+        c.total_spent, c.created_at, c.updated_at
+END
+GO
+
+-- Procedure thêm order
+CREATE PROCEDURE sp_InsertOrder
+    @order_code NVARCHAR(50),
+    @customer_id INT = NULL,
+    @employee_id INT = NULL,
+    @order_date DATETIME,
+    @subtotal DECIMAL(18,2),
+    @discount_amount DECIMAL(18,2),
+    @tax_amount DECIMAL(18,2),
+    @total_amount DECIMAL(18,2),
+    @promotion_id INT = NULL,
+    @payment_method NVARCHAR(50),
+    @payment_status NVARCHAR(50),
+    @order_status NVARCHAR(50),
+    @notes NVARCHAR(MAX),
+    @order_id INT OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        INSERT INTO orders (
+            order_code, customer_id, employee_id, order_date, 
+            subtotal, discount_amount, tax_amount, total_amount,
+            promotion_id, payment_method, payment_status, order_status, notes
+        )
+        VALUES (
+            @order_code, @customer_id, @employee_id, @order_date,
+            @subtotal, @discount_amount, @tax_amount, @total_amount,
+            @promotion_id, @payment_method, @payment_status, @order_status, @notes
+        );
+
+        SET @order_id = SCOPE_IDENTITY();
+
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK;
+        THROW;
+    END CATCH
+END
+GO
+
+-- Procedure thêm chi tiết order
+CREATE PROCEDURE sp_InsertOrderDetail
+    @order_id INT,
+    @product_id INT,
+    @quantity INT,
+    @unit_price DECIMAL(18,2),
+    @discount_per_item DECIMAL(18,2),
+    @total_price DECIMAL(18,2)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        INSERT INTO order_details (
+            order_id, product_id, quantity, unit_price, discount_per_item, total_price
+        )
+        VALUES (
+            @order_id, @product_id, @quantity, @unit_price, @discount_per_item, @total_price
+        );
+
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK;
+        THROW;
+    END CATCH
+END
+GO
+
+-- Procedure thêm thanh toán
+CREATE PROCEDURE sp_InsertPayment
+    @order_id INT,
+    @payment_date DATETIME,
+    @payment_method NVARCHAR(50),
+    @amount DECIMAL(18,2),
+    @reference_number NVARCHAR(100),
+    @status NVARCHAR(50),
+    @notes NVARCHAR(MAX),
+    @payment_id INT OUTPUT
+AS
+BEGIN
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        INSERT INTO payments (
+            order_id, payment_date, payment_method, amount,
+            reference_number, status, notes
+        )
+        VALUES (
+            @order_id, @payment_date, @payment_method, @amount,
+            @reference_number, @status, @notes
+        );
+
+        SET @payment_id = SCOPE_IDENTITY();
+
+        -- Cập nhật trạng thái thanh toán của đơn hàng
+        DECLARE @total_paid DECIMAL(18,2) = (
+            SELECT SUM(amount)
+            FROM payments
+            WHERE order_id = @order_id AND status = 'successful'
+        );
+
+        DECLARE @order_total DECIMAL(18,2) = (
+            SELECT total_amount FROM orders WHERE order_id = @order_id
+        );
+
+        UPDATE orders
+        SET payment_status = 
+            CASE 
+                WHEN @total_paid >= @order_total THEN 'paid'
+                WHEN @total_paid > 0 THEN 'partial'
+                ELSE 'unpaid'
+            END
+        WHERE order_id = @order_id;
+
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK;
+        THROW;
+    END CATCH
+END
+GO
+
+-- Procedure lấy order bằng order id
+CREATE PROCEDURE sp_GetOrderById
+    @orderId INT
+AS
+BEGIN
+    SELECT 
+        o.*, 
+        c.full_name AS customer_name, 
+        e.full_name AS employee_name
+    FROM orders o
+    LEFT JOIN customers c ON o.customer_id = c.customer_id
+    LEFT JOIN employees e ON o.employee_id = e.employee_id
+    WHERE o.order_id = @orderId;
+END
+GO
+
+-- Procedure lấy chi tiết order bằng order id
+CREATE PROCEDURE sp_GetOrderDetails
+    @orderId INT
+AS
+BEGIN
+    SELECT 
+        od.*, 
+        p.product_name, 
+        p.product_code
+    FROM order_details od
+    INNER JOIN products p ON od.product_id = p.product_id
+    WHERE od.order_id = @orderId
+    ORDER BY od.detail_id;
+END
+GO
+-- Procedure thêm khách hàng
+CREATE PROCEDURE sp_InsertCustomer
+    @customer_code NVARCHAR(50),
+    @full_name NVARCHAR(100),
+    @phone NVARCHAR(20),
+    @email NVARCHAR(100),
+    @address NVARCHAR(255),
+    @date_of_birth DATE = NULL,
+    @gender NVARCHAR(10),
+    @customer_type NVARCHAR(50)
+AS
+BEGIN
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        INSERT INTO customers (
+            customer_code, full_name, phone, email, address,
+            date_of_birth, gender, customer_type
+        )
+        VALUES (
+            @customer_code, @full_name, @phone, @email, @address,
+            @date_of_birth, @gender, @customer_type
+        );
+
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK;
+        THROW;
+    END CATCH
+END
+GO
+
+-- Procedure cập nhật trạng thái order
+CREATE PROCEDURE sp_UpdateOrderStatus
+    @orderId INT,
+    @newStatus NVARCHAR(50)
+AS
+BEGIN
+    UPDATE orders
+    SET order_status = @newStatus
+    WHERE order_id = @orderId;
+END
+GO
+
+-- Procedure cập nhật trạng thái thanh toán
+CREATE PROCEDURE sp_UpdatePaymentStatus
+    @orderId INT,
+    @newStatus NVARCHAR(50)
+AS
+BEGIN
+    UPDATE orders
+    SET payment_status = @newStatus
+    WHERE order_id = @orderId;
+END
+GO
+
+-- Procedure lấy danh sách sản phẩm bán chạy
+CREATE PROCEDURE sp_GetTopSellingProducts
+    @fromDate DATE,
+    @toDate DATE,
+    @topCount INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT TOP (@topCount)
+        p.product_id,
+        p.product_name,
+        b.brand_name,
+        SUM(od.quantity) AS quantity_sold,
+        SUM(od.total_price) AS total_revenue,
+        AVG(od.unit_price) AS avg_price,
+        COUNT(DISTINCT od.order_id) AS total_orders
+    FROM products p
+    INNER JOIN order_details od ON p.product_id = od.product_id
+    INNER JOIN orders o ON od.order_id = o.order_id
+    LEFT JOIN brands b ON p.brand_id = b.brand_id
+    WHERE o.order_status = 'completed'
+      AND CAST(o.order_date AS DATE) BETWEEN @fromDate AND @toDate
+    GROUP BY p.product_id, p.product_name, b.brand_name
+    ORDER BY quantity_sold DESC;
+END
+GO
+
+-- Procedure lấy danh sách năng suất của nhân viên
+CREATE PROCEDURE sp_GetEmployeePerformanceReport
+    @fromDate DATE,
+    @toDate DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT 
+        e.employee_id,
+        e.full_name,
+        e.position,
+        COUNT(o.order_id) AS total_orders,
+        COALESCE(SUM(o.total_amount), 0) AS total_sales,
+        COALESCE(AVG(o.total_amount), 0) AS avg_order_value,
+        COALESCE(MAX(o.order_date), e.created_at) AS last_sale_date
+    FROM employees e
+    LEFT JOIN orders o ON e.employee_id = o.employee_id 
+        AND o.order_status = 'completed'
+        AND CAST(o.order_date AS DATE) BETWEEN @fromDate AND @toDate
+    WHERE e.status = 'active'
+    GROUP BY e.employee_id, e.full_name, e.position, e.created_at
+    ORDER BY total_sales DESC;
+END
+GO
+
+
+-- =====================================================
+-- 1. TẠO CÁC DATABASE ROLE
+-- =====================================================
+
+-- Tạo role cho Admin (toàn quyền)
+CREATE ROLE db_admin;
+GO
+
+-- Tạo role cho Manager (quản lý cửa hàng)
+CREATE ROLE db_manager;
+GO
+
+-- Tạo role cho Cashier (thu ngân)
+CREATE ROLE db_cashier;
+GO
+
+-- Tạo role cho Salesperson (nhân viên bán hàng)
+CREATE ROLE db_salesperson;
+GO
+
+-- Tạo role cho Staff (nhân viên cơ bản)
+CREATE ROLE db_staff;
+GO
+
+-- =====================================================
+-- 2. PHÂN QUYỀN CHO ADMIN ROLE (TOÀN QUYỀN)
+-- =====================================================
+
+-- Admin có toàn quyền trên tất cả tables
+GRANT SELECT, INSERT, UPDATE, DELETE ON employees TO db_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON roles TO db_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON users TO db_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON user_roles TO db_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON customers TO db_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON suppliers TO db_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON categories TO db_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON brands TO db_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON products TO db_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON inventory TO db_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON promotions TO db_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON orders TO db_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON order_details TO db_admin;
+GRANT SELECT, INSERT, UPDATE, DELETE ON payments TO db_admin;
+
+-- Admin có quyền thực thi tất cả stored procedures
+GRANT EXECUTE ON sp_GetDashboardStats TO db_admin;
+GRANT EXECUTE ON sp_GetCustomerByPhone TO db_admin;
+GRANT EXECUTE ON sp_GetProductStock TO db_admin;
+GRANT EXECUTE ON sp_GetProductById TO db_admin;
+GRANT EXECUTE ON sp_InsertOrder TO db_admin;
+GRANT EXECUTE ON sp_InsertOrderDetail TO db_admin;
+GRANT EXECUTE ON sp_GetOrderById TO db_admin;
+GRANT EXECUTE ON sp_GetOrderDetails TO db_admin;
+GRANT EXECUTE ON sp_InsertPayment TO db_admin;
+GRANT EXECUTE ON sp_InsertCustomer TO db_admin;
+GRANT EXECUTE ON sp_UpdateOrderStatus TO db_admin;
+GRANT EXECUTE ON sp_UpdatePaymentStatus TO db_admin;
+GRANT EXECUTE ON sp_GetTopSellingProducts TO db_admin;
+GRANT EXECUTE ON sp_GetEmployeePerformanceReport TO db_admin;
+GRANT EXECUTE ON GetRevenueReport TO db_admin;
+GRANT EXECUTE ON LoginUser TO db_admin;
+GRANT EXECUTE ON CheckUserRoles TO db_admin;
+
+
+-- Admin có quyền truy cập tất cả views
+GRANT SELECT ON v_AllActiveProducts TO db_admin;
+GRANT SELECT ON v_ActiveEmployees TO db_admin;
+GRANT SELECT ON daily_revenue_report TO db_admin;
+GRANT SELECT ON top_selling_products TO db_admin;
+GRANT SELECT ON employee_performance TO db_admin;
+GRANT SELECT ON profit_report TO db_admin;
+
+-- Admin có quyền truy cập functions
+GRANT EXECUTE ON fn_GenerateOrderCode TO db_admin;
+GRANT EXECUTE ON fn_GenerateCustomerCode TO db_admin;
+GRANT SELECT ON fn_GetPaymentSummaryByOrderId TO db_admin;
+GRANT SELECT ON fn_GetAllOrders TO db_admin;
+GRANT SELECT ON fn_GetDailySalesReport TO db_admin;
+
+-- =====================================================
+-- 3. PHÂN QUYỀN CHO MANAGER ROLE
+-- =====================================================
+
+-- Manager có quyền đọc hầu hết các bảng
+GRANT SELECT ON employees TO db_manager;
+GRANT SELECT ON customers TO db_manager;
+GRANT SELECT ON suppliers TO db_manager;
+GRANT SELECT ON categories TO db_manager;
+GRANT SELECT ON brands TO db_manager;
+GRANT SELECT ON products TO db_manager;
+GRANT SELECT ON inventory TO db_manager;
+GRANT SELECT ON promotions TO db_manager;
+GRANT SELECT ON orders TO db_manager;
+GRANT SELECT ON order_details TO db_manager;
+GRANT SELECT ON payments TO db_manager;
+GRANT SELECT ON roles TO db_manager;
+GRANT SELECT ON users TO db_manager;
+GRANT SELECT ON user_roles TO db_manager;
+
+-- Manager có quyền quản lý khách hàng và đơn hàng
+GRANT INSERT, UPDATE ON customers TO db_manager;
+GRANT INSERT, UPDATE ON orders TO db_manager;
+GRANT INSERT, UPDATE ON order_details TO db_manager;
+GRANT INSERT, UPDATE ON payments TO db_manager;
+
+-- Manager có quyền quản lý khuyến mãi và kho
+GRANT INSERT, UPDATE ON promotions TO db_manager;
+GRANT UPDATE ON inventory TO db_manager;
+
+-- Manager có quyền thực thi stored procedures cần thiết
+GRANT EXECUTE ON sp_GetDashboardStats TO db_manager;
+GRANT EXECUTE ON sp_GetCustomerByPhone TO db_manager;
+GRANT EXECUTE ON sp_GetProductStock TO db_manager;
+GRANT EXECUTE ON sp_GetProductById TO db_manager;
+GRANT EXECUTE ON sp_InsertOrder TO db_manager;
+GRANT EXECUTE ON sp_InsertOrderDetail TO db_manager;
+GRANT EXECUTE ON sp_GetOrderById TO db_manager;
+GRANT EXECUTE ON sp_GetOrderDetails TO db_manager;
+GRANT EXECUTE ON sp_InsertPayment TO db_manager;
+GRANT EXECUTE ON sp_InsertCustomer TO db_manager;
+GRANT EXECUTE ON sp_UpdateOrderStatus TO db_manager;
+GRANT EXECUTE ON sp_UpdatePaymentStatus TO db_manager;
+GRANT EXECUTE ON sp_GetTopSellingProducts TO db_manager;
+GRANT EXECUTE ON sp_GetEmployeePerformanceReport TO db_manager;
+GRANT EXECUTE ON GetRevenueReport TO db_manager;
+GRANT EXECUTE ON CheckUserRoles TO db_manager;
+GRANT EXECUTE ON LoginUser TO db_manager;
+
+
+-- Manager có quyền truy cập tất cả views
+GRANT SELECT ON v_AllActiveProducts TO db_manager;
+GRANT SELECT ON v_ActiveEmployees TO db_manager;
+GRANT SELECT ON daily_revenue_report TO db_manager;
+GRANT SELECT ON top_selling_products TO db_manager;
+GRANT SELECT ON employee_performance TO db_manager;
+GRANT SELECT ON profit_report TO db_manager;
+
+-- Manager có quyền truy cập functions
+GRANT EXECUTE ON fn_GenerateOrderCode TO db_manager;
+GRANT EXECUTE ON fn_GenerateCustomerCode TO db_manager;
+GRANT SELECT ON fn_GetPaymentSummaryByOrderId TO db_manager;
+GRANT SELECT ON fn_GetAllOrders TO db_manager;
+GRANT SELECT ON fn_GetDailySalesReport TO db_manager;
+
+-- =====================================================
+-- 4. PHÂN QUYỀN TINH GỌN CHO CASHIER (BÁN HÀNG)
+-- =====================================================
+
+-- Cashier - Quyền SELECT cơ bản cho bán hàng
+GRANT SELECT ON employees TO db_cashier;
+GRANT SELECT ON customers TO db_cashier;
+GRANT SELECT ON suppliers TO db_cashier;
+GRANT SELECT ON categories TO db_cashier;
+GRANT SELECT ON brands TO db_cashier;
+GRANT SELECT ON products TO db_cashier;
+GRANT SELECT ON inventory TO db_cashier;
+GRANT SELECT ON promotions TO db_cashier;
+GRANT SELECT ON orders TO db_cashier;
+GRANT SELECT ON order_details TO db_cashier;
+GRANT SELECT ON payments TO db_cashier;
+GRANT SELECT ON roles TO db_cashier;
+GRANT SELECT ON users TO db_cashier;
+GRANT SELECT ON user_roles TO db_cashier;
+
+-- Cashier - Quyền INSERT/UPDATE cho bán hàng
+GRANT INSERT ON customers TO db_cashier;
+GRANT INSERT, UPDATE ON orders TO db_cashier;
+GRANT INSERT ON order_details TO db_cashier;
+GRANT INSERT ON payments TO db_cashier;
+
+-- Cashier - Stored procedures cần thiết cho bán hàng
+GRANT EXECUTE ON sp_GetCustomerByPhone TO db_cashier;
+GRANT EXECUTE ON sp_GetProductById TO db_cashier;
+GRANT EXECUTE ON sp_GetProductStock TO db_cashier;
+GRANT EXECUTE ON sp_InsertCustomer TO db_cashier;
+GRANT EXECUTE ON sp_InsertOrder TO db_cashier;
+GRANT EXECUTE ON sp_InsertOrderDetail TO db_cashier;
+GRANT EXECUTE ON sp_InsertPayment TO db_cashier;
+GRANT EXECUTE ON sp_GetOrderById TO db_cashier;
+GRANT EXECUTE ON sp_GetOrderDetails TO db_cashier;
+GRANT EXECUTE ON CheckUserRoles TO db_cashier;
+GRANT EXECUTE ON LoginUser TO db_cashier;
+
+-- Cashier - Functions cần thiết
+GRANT EXECUTE ON fn_GenerateOrderCode TO db_cashier;
+GRANT EXECUTE ON fn_GenerateCustomerCode TO db_cashier;
+GRANT SELECT ON fn_GetPaymentSummaryByOrderId TO db_cashier;
+
+-- Cashier - Views cần thiết
+GRANT SELECT ON v_AllActiveProducts TO db_cashier;
+GRANT SELECT ON v_ActiveEmployees TO db_cashier;
+
+-- =====================================================
+-- 5. PHÂN QUYỀN TINH GỌN CHO SALESPERSON (BÁN HÀNG + BÁO CÁO CƠ BẢN)
+-- =====================================================
+
+-- Salesperson - Kế thừa tất cả quyền của Cashier
+GRANT SELECT ON employees TO db_salesperson;
+GRANT SELECT ON customers TO db_salesperson;
+GRANT SELECT ON suppliers TO db_salesperson;
+GRANT SELECT ON categories TO db_salesperson;
+GRANT SELECT ON brands TO db_salesperson;
+GRANT SELECT ON products TO db_salesperson;
+GRANT SELECT ON inventory TO db_salesperson;
+GRANT SELECT ON promotions TO db_salesperson;
+GRANT SELECT ON orders TO db_salesperson;
+GRANT SELECT ON order_details TO db_salesperson;
+GRANT SELECT ON payments TO db_salesperson;
+GRANT SELECT ON roles TO db_salesperson;
+GRANT SELECT ON users TO db_salesperson;
+GRANT SELECT ON user_roles TO db_salesperson;
+
+
+GRANT INSERT ON customers TO db_salesperson;
+GRANT INSERT, UPDATE ON orders TO db_salesperson;
+GRANT INSERT ON order_details TO db_salesperson;
+GRANT INSERT ON payments TO db_salesperson;
+
+-- Salesperson - Stored procedures bán hàng
+GRANT EXECUTE ON sp_GetCustomerByPhone TO db_salesperson;
+GRANT EXECUTE ON sp_GetProductById TO db_salesperson;
+GRANT EXECUTE ON sp_GetProductStock TO db_salesperson;
+GRANT EXECUTE ON sp_InsertCustomer TO db_salesperson;
+GRANT EXECUTE ON sp_InsertOrder TO db_salesperson;
+GRANT EXECUTE ON sp_InsertOrderDetail TO db_salesperson;
+GRANT EXECUTE ON sp_InsertPayment TO db_salesperson;
+GRANT EXECUTE ON sp_GetOrderById TO db_salesperson;
+GRANT EXECUTE ON sp_GetOrderDetails TO db_salesperson;
+GRANT EXECUTE ON CheckUserRoles TO db_salesperson;
+GRANT EXECUTE ON LoginUser TO db_salesperson;
+
+
+-- Salesperson - Stored procedures báo cáo doanh thu
+GRANT EXECUTE ON sp_GetDashboardStats TO db_salesperson;
+GRANT EXECUTE ON sp_GetTopSellingProducts TO db_salesperson;
+
+-- Salesperson - Functions
+GRANT EXECUTE ON fn_GenerateOrderCode TO db_salesperson;
+GRANT EXECUTE ON fn_GenerateCustomerCode TO db_salesperson;
+GRANT SELECT ON fn_GetPaymentSummaryByOrderId TO db_salesperson;
+GRANT SELECT ON fn_GetDailySalesReport TO db_salesperson;
+GRANT SELECT ON fn_GetAllOrders TO db_salesperson;
+
+-- Salesperson - Views cần thiết
+GRANT SELECT ON v_AllActiveProducts TO db_salesperson;
+GRANT SELECT ON v_ActiveEmployees TO db_salesperson;
+GRANT SELECT ON daily_revenue_report TO db_salesperson;
+GRANT SELECT ON top_selling_products TO db_salesperson;
+
+-- =====================================================
+-- 6. PHÂN QUYỀN CHO STAFF ROLE
+-- =====================================================
+
+-- Staff chỉ có quyền đọc thông tin cơ bản
+GRANT SELECT ON employees TO db_staff;
+GRANT SELECT ON customers TO db_staff;
+GRANT SELECT ON suppliers TO db_staff;
+GRANT SELECT ON categories TO db_staff;
+GRANT SELECT ON brands TO db_staff;
+GRANT SELECT ON products TO db_staff;
+GRANT SELECT ON inventory TO db_staff;
+GRANT SELECT ON promotions TO db_staff;
+GRANT SELECT ON orders TO db_staff;
+GRANT SELECT ON order_details TO db_staff;
+GRANT SELECT ON payments TO db_staff;
+GRANT SELECT ON roles TO db_staff;
+GRANT SELECT ON users TO db_staff;
+GRANT SELECT ON user_roles TO db_staff;
+
+-- Staff có quyền thực thi một số stored procedures cơ bản
+GRANT EXECUTE ON sp_GetCustomerByPhone TO db_staff;
+GRANT EXECUTE ON sp_GetProductStock TO db_staff;
+GRANT EXECUTE ON sp_GetProductById TO db_staff;
+GRANT EXECUTE ON sp_GetOrderById TO db_staff;
+GRANT EXECUTE ON sp_GetOrderDetails TO db_staff;
+GRANT EXECUTE ON CheckUserRoles TO db_staff;
+GRANT EXECUTE ON LoginUser TO db_staff;
+
+-- Staff có quyền truy cập view sản phẩm
+GRANT SELECT ON v_AllActiveProducts TO db_staff;
+GRANT SELECT ON v_ActiveEmployees TO db_staff;
 
 -- =====================================================
 -- KẾT THÚC SCRIPT TẠO CƠ SỞ DỮ LIỆU

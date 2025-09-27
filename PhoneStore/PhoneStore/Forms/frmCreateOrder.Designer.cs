@@ -110,7 +110,7 @@
             this.pnlMain.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlMain.Location = new System.Drawing.Point(0, 0);
             this.pnlMain.Name = "pnlMain";
-            this.pnlMain.Padding = new System.Windows.Forms.Padding(11, 11, 11, 11);
+            this.pnlMain.Padding = new System.Windows.Forms.Padding(11);
             this.pnlMain.Size = new System.Drawing.Size(1371, 853);
             this.pnlMain.TabIndex = 0;
             // 

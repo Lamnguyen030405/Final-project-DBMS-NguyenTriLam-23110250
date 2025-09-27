@@ -7,13 +7,26 @@ using System.Threading.Tasks;
 
 namespace PhoneStore.Configs
 {
-    public class DBConnection
+    public static class DBConnection
     {
-        private static string sqlStr = "Data Source=.;Initial Catalog=phone_store_db;Integrated Security=True";
+        public static string Username { get; set; }
+        public static string Password { get; set; }
+
+        public static string GetConnectionString()
+        {
+            return $"Data Source=.;Initial Catalog=phone_store_db_1;User ID={Username};Password=default123";
+        }
+
+        private static string defaultConnStr = "Data Source=.;Initial Catalog=phone_store_db_1;Integrated Security=True;Encrypt=True;TrustServerCertificate=True";
+
+        public static SqlConnection GetDefaultConnection()
+        {
+            return new SqlConnection(defaultConnStr);
+        }
 
         public static SqlConnection GetConnection()
         {
-            return new SqlConnection(sqlStr);
+            return new SqlConnection(GetConnectionString());
         }
 
         public static bool TestConnection()
@@ -31,5 +44,22 @@ namespace PhoneStore.Configs
                 return false;
             }
         }
+
+        public static bool TestDefaultConnection()
+        {
+            try
+            {
+                using (var conn = GetDefaultConnection())
+                {
+                    conn.Open();
+                    return true;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
+
 }
