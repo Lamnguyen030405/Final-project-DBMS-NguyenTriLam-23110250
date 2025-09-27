@@ -60,6 +60,8 @@
             this.gbOrderList = new System.Windows.Forms.GroupBox();
             this.dgvOrders = new System.Windows.Forms.DataGridView();
             this.gbFilters = new System.Windows.Forms.GroupBox();
+            this.cboEmployee = new System.Windows.Forms.ComboBox();
+            this.lblEmployee = new System.Windows.Forms.Label();
             this.btnRefresh = new System.Windows.Forms.Button();
             this.btnSearch = new System.Windows.Forms.Button();
             this.cboPaymentStatus = new System.Windows.Forms.ComboBox();
@@ -70,8 +72,6 @@
             this.lblToDate = new System.Windows.Forms.Label();
             this.dtpFromDate = new System.Windows.Forms.DateTimePicker();
             this.lblFromDate = new System.Windows.Forms.Label();
-            this.cboEmployee = new System.Windows.Forms.ComboBox();
-            this.lblEmployee = new System.Windows.Forms.Label();
             this.pnlMain.SuspendLayout();
             this.pnlBottom.SuspendLayout();
             this.pnlButtons.SuspendLayout();
@@ -310,6 +310,26 @@
             this.gbFilters.TabStop = false;
             this.gbFilters.Text = "Bộ lọc tìm kiếm";
             // 
+            // cboEmployee
+            // 
+            this.cboEmployee.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cboEmployee.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.cboEmployee.FormattingEnabled = true;
+            this.cboEmployee.Location = new System.Drawing.Point(733, 53);
+            this.cboEmployee.Name = "cboEmployee";
+            this.cboEmployee.Size = new System.Drawing.Size(228, 28);
+            this.cboEmployee.TabIndex = 11;
+            // 
+            // lblEmployee
+            // 
+            this.lblEmployee.AutoSize = true;
+            this.lblEmployee.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblEmployee.Location = new System.Drawing.Point(733, 31);
+            this.lblEmployee.Name = "lblEmployee";
+            this.lblEmployee.Size = new System.Drawing.Size(78, 20);
+            this.lblEmployee.TabIndex = 10;
+            this.lblEmployee.Text = "Nhân viên:";
+            // 
             // btnRefresh
             // 
             this.btnRefresh.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(39)))), ((int)(((byte)(174)))), ((int)(((byte)(96)))));
@@ -427,26 +447,6 @@
             this.lblFromDate.Size = new System.Drawing.Size(65, 20);
             this.lblFromDate.TabIndex = 0;
             this.lblFromDate.Text = "Từ ngày:";
-            // 
-            // cboEmployee
-            // 
-            this.cboEmployee.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cboEmployee.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.cboEmployee.FormattingEnabled = true;
-            this.cboEmployee.Location = new System.Drawing.Point(733, 53);
-            this.cboEmployee.Name = "cboEmployee";
-            this.cboEmployee.Size = new System.Drawing.Size(228, 28);
-            this.cboEmployee.TabIndex = 11;
-            // 
-            // lblEmployee
-            // 
-            this.lblEmployee.AutoSize = true;
-            this.lblEmployee.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.lblEmployee.Location = new System.Drawing.Point(733, 31);
-            this.lblEmployee.Name = "lblEmployee";
-            this.lblEmployee.Size = new System.Drawing.Size(78, 20);
-            this.lblEmployee.TabIndex = 10;
-            this.lblEmployee.Text = "Nhân viên:";
             // 
             // frmOrderList
             // 

@@ -13,13 +13,7 @@ namespace PhoneStore.Dao
     {
         public List<Promotion> GetActivePromotions()
         {
-            string query = @"
-                SELECT *
-                FROM promotions
-                WHERE status = 'active'
-                AND CAST(GETDATE() AS DATE) BETWEEN start_date AND end_date
-                AND (usage_limit IS NULL OR used_count < usage_limit)
-                ORDER BY created_at DESC";
+            string query = "SELECT * FROM v_ActivePromotions ORDER BY created_at DESC";
 
             var dataTable = ExecuteQuery(query);
             var promotions = new List<Promotion>();
@@ -34,20 +28,12 @@ namespace PhoneStore.Dao
 
         public Promotion GetPromotionByCode(string promotionCode)
         {
-            string query = @"
-                SELECT *
-                FROM promotions
-                WHERE promotion_code = @code
-                AND status = 'active'
-                AND CAST(GETDATE() AS DATE) BETWEEN start_date AND end_date
-                AND (usage_limit IS NULL OR used_count < usage_limit)";
-
             var parameters = new SqlParameter[]
             {
                 new SqlParameter("@code", promotionCode)
             };
 
-            var dataTable = ExecuteQuery(query, parameters);
+            var dataTable = ExecuteQuery("sp_GetPromotionByCode", parameters, isStoredProcedure: true);
 
             if (dataTable.Rows.Count > 0)
             {
@@ -56,6 +42,7 @@ namespace PhoneStore.Dao
 
             return null;
         }
+
 
         public decimal CalculateDiscount(Promotion promotion, decimal orderAmount)
         {
@@ -84,30 +71,34 @@ namespace PhoneStore.Dao
 
         public bool InsertPromotion(Promotion promotion)
         {
-            string query = @"
-                INSERT INTO promotions (promotion_code, promotion_name, description, discount_type,
-                                      discount_value, start_date, end_date, min_order_amount,
-                                      max_discount_amount, usage_limit, status)
-                VALUES (@code, @name, @description, @discountType, @discountValue,
-                       @startDate, @endDate, @minOrderAmount, @maxDiscountAmount, @usageLimit, @status)";
-
-            var parameters = new SqlParameter[]
+            try
             {
-                new SqlParameter("@code", promotion.PromotionCode),
-                new SqlParameter("@name", promotion.PromotionName),
-                new SqlParameter("@description", promotion.Description ?? ""),
-                new SqlParameter("@discountType", promotion.DiscountType),
-                new SqlParameter("@discountValue", promotion.DiscountValue),
-                new SqlParameter("@startDate", promotion.StartDate.Date),
-                new SqlParameter("@endDate", promotion.EndDate.Date),
-                new SqlParameter("@minOrderAmount", promotion.MinOrderAmount),
-                new SqlParameter("@maxDiscountAmount", promotion.MaxDiscountAmount),
-                new SqlParameter("@usageLimit", promotion.UsageLimit > 0 ? (object)promotion.UsageLimit : DBNull.Value),
-                new SqlParameter("@status", promotion.Status ?? "active")
-            };
+                var parameters = new SqlParameter[]
+                {
+            new SqlParameter("@code", promotion.PromotionCode),
+            new SqlParameter("@name", promotion.PromotionName),
+            new SqlParameter("@description", promotion.Description ?? ""),
+            new SqlParameter("@discountType", promotion.DiscountType),
+            new SqlParameter("@discountValue", promotion.DiscountValue),
+            new SqlParameter("@startDate", promotion.StartDate.Date),
+            new SqlParameter("@endDate", promotion.EndDate.Date),
+            new SqlParameter("@minOrderAmount", promotion.MinOrderAmount),
+            new SqlParameter("@maxDiscountAmount", promotion.MaxDiscountAmount),
+            new SqlParameter("@usageLimit", promotion.UsageLimit > 0 ? (object)promotion.UsageLimit : DBNull.Value),
+            new SqlParameter("@status", promotion.Status ?? "active")
+                };
 
-            return ExecuteNonQuery(query, parameters) > 0;
+                ExecuteNonQuery("sp_InsertPromotion", parameters, isStoredProcedure: true);
+
+                // Nếu không có exception → thành công
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
+
 
         private Promotion MapRowToPromotion(DataRow row)
         {
@@ -128,6 +119,108 @@ namespace PhoneStore.Dao
                 Status = row["status"].ToString(),
                 CreatedAt = Convert.ToDateTime(row["created_at"])
             };
+        }
+
+        public List<Promotion> GetAllPromotions()
+        {
+            var dataTable = ExecuteQuery("sp_GetAllPromotions", null, isStoredProcedure: true);
+            var promotions = new List<Promotion>();
+
+            foreach (DataRow row in dataTable.Rows)
+            {
+                promotions.Add(MapRowToPromotion(row));
+            }
+
+            return promotions;
+        }
+
+
+        public bool UpdatePromotionStatus(int promotionId, string status)
+        {
+            try
+            {
+                var parameters = new SqlParameter[]
+                {
+            new SqlParameter("@status", status),
+            new SqlParameter("@promotionId", promotionId)
+                };
+
+                ExecuteNonQuery("sp_UpdatePromotionStatus", parameters, isStoredProcedure: true);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public bool DeletePromotion(int promotionId)
+        {
+            try
+            {
+                var parameters = new SqlParameter[]
+                {
+            new SqlParameter("@promotionId", promotionId)
+                };
+
+                ExecuteNonQuery("sp_DeletePromotion", parameters, isStoredProcedure: true);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public bool UpdatePromotion(Promotion promotion)
+        {
+            try
+            {
+                var parameters = new SqlParameter[]
+                {
+            new SqlParameter("@promotionId", promotion.PromotionId),
+            new SqlParameter("@name", promotion.PromotionName),
+            new SqlParameter("@description", promotion.Description ?? ""),
+            new SqlParameter("@discountType", promotion.DiscountType),
+            new SqlParameter("@discountValue", promotion.DiscountValue),
+            new SqlParameter("@startDate", promotion.StartDate.Date),
+            new SqlParameter("@endDate", promotion.EndDate.Date),
+            new SqlParameter("@minOrderAmount", promotion.MinOrderAmount),
+            new SqlParameter("@maxDiscountAmount", promotion.MaxDiscountAmount),
+            new SqlParameter("@usageLimit", promotion.UsageLimit > 0 ? (object)promotion.UsageLimit : DBNull.Value),
+            new SqlParameter("@status", promotion.Status ?? "active")
+                };
+
+                ExecuteNonQuery("sp_UpdatePromotion", parameters, isStoredProcedure: true);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+
+        public Promotion GetPromotionById(int promotionId)
+        {
+            string query = @"
+        SELECT *
+        FROM promotions
+        WHERE promotion_id = @promotionId";
+
+            var parameters = new SqlParameter[]
+            {
+        new SqlParameter("@promotionId", promotionId)
+            };
+
+            var dataTable = ExecuteQuery(query, parameters);
+
+            if (dataTable.Rows.Count > 0)
+            {
+                return MapRowToPromotion(dataTable.Rows[0]);
+            }
+
+            return null;
         }
     }
 }

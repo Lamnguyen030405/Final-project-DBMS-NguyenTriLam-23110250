@@ -5,12 +5,12 @@
 -- =====================================================
 
 -- Tạo cơ sở dữ liệu
-IF DB_ID('phone_store_db_1') IS NOT NULL
-    DROP DATABASE phone_store_db_1;
+IF DB_ID('phone_store_db') IS NOT NULL
+    DROP DATABASE phone_store_db;
 GO
-CREATE DATABASE phone_store_db_1;
+CREATE DATABASE phone_store_db;
 GO
-USE phone_store_db_1;
+USE phone_store_db;
 GO
 
 -- =====================================================
@@ -165,7 +165,7 @@ GO
 
 
 -- =====================================================
--- 4. BẢNG QUẢN LÝ KHUYẾN MÃI
+-- 2. BẢNG QUẢN LÝ KHUYẾN MÃI
 -- =====================================================
 
 -- Bảng Khuyến mãi
@@ -189,7 +189,7 @@ CREATE TABLE promotions (
 GO
 
 -- =====================================================
--- 5. BẢNG QUẢN LÝ BÁN HÀNG
+-- 3. BẢNG QUẢN LÝ BÁN HÀNG
 -- =====================================================
 
 -- Bảng Đơn hàng
@@ -248,7 +248,7 @@ CREATE TABLE payments (
 GO
 
 -- =====================================================
--- 6. TẠO CÁC INDEX ĐỂ TỐI ƯU HIỆU SUẤT
+-- 4. TẠO CÁC INDEX ĐỂ TỐI ƯU HIỆU SUẤT
 -- =====================================================
 
 CREATE INDEX idx_products_name ON products(product_name);
@@ -265,7 +265,7 @@ CREATE INDEX idx_users_username ON users(username);
 GO
 
 -- =====================================================
--- 7. TẠO CÁC TRIGGER TỰ ĐỘNG
+-- 5. TẠO CÁC TRIGGER TỰ ĐỘNG
 -- =====================================================
 
 CREATE FUNCTION dbo.HashPassword (@password NVARCHAR(256))
@@ -359,62 +359,78 @@ AFTER INSERT
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET XACT_ABORT OFF; -- Cho phép xử lý lỗi tốt hơn
 
     DECLARE @employee_id INT, @employee_code NVARCHAR(20), @username NVARCHAR(50);
-    DECLARE @default_password NVARCHAR(50) = 'default123'; -- Plain password dùng cho SQL Login
+    DECLARE @default_password NVARCHAR(50) = 'default123';
     DECLARE @position NVARCHAR(50);
     DECLARE @role_name NVARCHAR(50);
 
     DECLARE employee_cursor CURSOR FOR
-    SELECT employee_id, employee_code FROM inserted;
+    SELECT employee_id, employee_code, position FROM inserted;
 
     OPEN employee_cursor;
-    FETCH NEXT FROM employee_cursor INTO @employee_id, @employee_code;
+    FETCH NEXT FROM employee_cursor INTO @employee_id, @employee_code, @position;
 
     WHILE @@FETCH_STATUS = 0
     BEGIN
-        -- Tạo username từ employee_code
-        SET @username = 'user_' + @employee_code;
+        BEGIN TRY
+            -- Tạo username từ employee_code
+            SET @username = 'user_' + @employee_code;
 
-        -- Lấy vị trí (position) của nhân viên
-        SELECT @position = position FROM employees WHERE employee_id = @employee_id;
+            -- Xác định role name từ position
+            SET @role_name = CASE
+                WHEN @position = N'Admin' THEN 'Admin'
+                WHEN @position = N'Quản lý' THEN 'Manager'
+                WHEN @position = N'Thu ngân' THEN 'Cashier'
+                WHEN @position = N'Bán hàng' THEN 'Salesperson'
+                ELSE 'Staff'
+            END;
 
-        -- Xác định role name từ position
-        SET @role_name = CASE 
-            WHEN @position = N'Quản lý' THEN 'Manager'
-            WHEN @position = N'Thu ngân' THEN 'Cashier'
-            WHEN @position = N'Bán hàng' THEN 'Salesperson'
-            ELSE 'Staff'
-        END;
+            -- Thêm vào bảng users (dùng mật khẩu đã hash để lưu riêng cho ứng dụng)
+            INSERT INTO users (username, password_hash, employee_id, status)
+            VALUES (
+                @username,
+                dbo.HashPassword(@default_password),
+                @employee_id,
+                'active'
+            );
 
-        -- Thêm vào bảng users (dùng mật khẩu đã hash để lưu riêng cho ứng dụng)
-        INSERT INTO users (username, password_hash, employee_id, status)
-        VALUES (
-            @username,
-            dbo.HashPassword(@default_password),
-            @employee_id,
-            'active'
-        );
+            -- Gán vai trò (ghi vào bảng user_roles)
+            DECLARE @role_id INT;
+            SELECT @role_id = role_id FROM roles WHERE role_name = @role_name;
 
-        -- Gán vai trò (ghi vào bảng user_roles như cũ)
-        DECLARE @role_id INT;
-        SELECT @role_id = role_id FROM roles WHERE role_name = @role_name;
+            IF @role_id IS NOT NULL
+            BEGIN
+                INSERT INTO user_roles (user_id, role_id)
+                SELECT user_id, @role_id FROM users WHERE employee_id = @employee_id;
+            END
 
-        IF @role_id IS NOT NULL
-        BEGIN
-            INSERT INTO user_roles (user_id, role_id)
-            SELECT user_id, @role_id FROM users WHERE employee_id = @employee_id;
-        END
+            -- Gọi stored procedure để tạo SQL login/user (với xử lý lỗi)
+            BEGIN TRY
+                EXEC sp_CreateDatabaseUser 
+                    @username = @username, 
+                    @password = @default_password, 
+                    @role_name = @role_name;
+            END TRY
+            BEGIN CATCH
+                -- Nếu tạo database user thất bại, chỉ log lỗi nhưng không làm fail toàn bộ transaction
+                PRINT 'Warning: Failed to create database user for ' + @username + ': ' + ERROR_MESSAGE();
+            END CATCH
 
-        -- Gọi stored procedure để tạo SQL login/user và phân quyền thực tế
-        EXEC sp_CreateDatabaseUser @username = @username, @password = @default_password, @role_name = @role_name;
+        END TRY
+        BEGIN CATCH
+            -- Nếu có lỗi nghiêm trọng, log và tiếp tục với employee tiếp theo
+            PRINT 'Error processing employee ' + @employee_code + ': ' + ERROR_MESSAGE();
+        END CATCH
 
-        FETCH NEXT FROM employee_cursor INTO @employee_id, @employee_code;
+        FETCH NEXT FROM employee_cursor INTO @employee_id, @employee_code, @position;
     END;
 
     CLOSE employee_cursor;
     DEALLOCATE employee_cursor;
 END;
+GO
 
 -- Trigger cập nhật thời gian updated_at
 CREATE TRIGGER tr_employees_update
@@ -649,7 +665,7 @@ END;
 GO
 
 -- =====================================================
--- 8. TẠO CÁC VIEW HỖ TRỢ BÁO CÁO
+-- 6. TẠO CÁC VIEW HỖ TRỢ BÁO CÁO
 -- =====================================================
 
 -- View báo cáo doanh thu theo ngày
@@ -756,126 +772,19 @@ FROM employees
 WHERE status = 'active';	
 GO
 
--- =====================================================
--- 9. THÊM DỮ LIỆU MẪU
--- =====================================================
-
--- Thêm dữ liệu mẫu cho roles
-INSERT INTO roles (role_name, description) VALUES
-('Admin', N'Quản trị viên hệ thống, có toàn quyền'),
-('Manager', N'Quản lý cửa hàng, quản lý nhân viên và đơn hàng'),
-('Cashier', N'Thu ngân, xử lý thanh toán'),
-('Salesperson', N'Nhân viên bán hàng, tạo đơn hàng'),
-('Staff', N'Nhân viên cơ bản, hỗ trợ các công việc khác');
-GO
-
--- Thêm dữ liệu mẫu cho categories
-INSERT INTO categories (category_name, description) VALUES
-(N'Điện thoại', N'Điện thoại thông minh các loại'),
-(N'Phụ kiện', N'Phụ kiện điện thoại'),
-(N'Tablet', N'Máy tính bảng'),
-(N'Đồng hồ thông minh', N'Smart watch các loại');
-GO
-
--- Thêm dữ liệu mẫu cho brands
-INSERT INTO brands (brand_name, country_origin, description) VALUES
-('Apple', 'USA', N'Thương hiệu công nghệ hàng đầu'),
-('Samsung', 'South Korea', N'Tập đoàn công nghệ Hàn Quốc'),
-('Xiaomi', 'China', N'Thương hiệu công nghệ Trung Quốc'),
-('OPPO', 'China', N'Thương hiệu điện thoại'),
-('Vivo', 'China', N'Thương hiệu điện thoại');
-GO
-
--- Thêm dữ liệu mẫu cho suppliers
-INSERT INTO suppliers (supplier_code, company_name, contact_person, phone, email, address) VALUES
-('SUP001', N'Công ty TNHH Phân phối A', N'Nguyễn Văn A', '0901234567', 'contact@supplier-a.com', N'123 Đường ABC, Quận 1, TP.HCM'),
-('SUP002', N'Công ty Cổ phần Thương mại B', N'Trần Thị B', '0902345678', 'info@supplier-b.com', N'456 Đường DEF, Quận 3, TP.HCM');
-GO
-
--- Thêm dữ liệu mẫu cho employees (tự động tạo users và user_roles qua trigger)
-INSERT INTO employees (employee_code, full_name, phone, email, position, hire_date, salary) VALUES
-('EMP001', N'Nguyễn Văn Nam', '0911111111', 'nam@phonestore.com', N'Quản lý', '2023-01-01', 15000000),
-('EMP002', N'Trần Thị Lan', '0922222222', 'lan@phonestore.com', N'Thu ngân', '2023-02-01', 8000000),
-('EMP003', N'Lê Văn Hùng', '0933333333', 'hung@phonestore.com', N'Bán hàng', '2023-03-01', 10000000);
-GO
-
--- Thêm dữ liệu mẫu cho customers
-INSERT INTO customers (customer_code, full_name, phone, email, address, customer_type) VALUES
-('CUS001', N'Phạm Văn Khách', '0944444444', 'khach@email.com', N'789 Đường GHI, Quận 5, TP.HCM', 'regular'),
-('CUS002', N'Hoàng Thị Mai', '0955555555', 'mai@email.com', N'321 Đường JKL, Quận 7, TP.HCM', 'vip');
-GO
-
--- Thêm dữ liệu mẫu cho products
-INSERT INTO products (
-    product_code, 
-    product_name, 
-    category_id, 
-    brand_id, 
-    supplier_id, 
-    description, 
-    specifications, 
-    cost_price, 
-    selling_price, 
-    warranty_period, 
-    image_url, 
-    status
-) VALUES
-('PROD001', 'iPhone 14 Pro Max', 1, 1, 1, 
-    'Điện thoại thông minh cao cấp từ Apple', 
-    '{"RAM": "6GB", "Storage": "256GB", "Screen": "6.7 inch", "Camera": "48MP"}', 
-    25000000.00, 29990000.00, 12, 
-    'https://example.com/images/iphone14promax.jpg', 'active'),
-('PROD002', 'Samsung Galaxy S23 Ultra', 1, 2, 1, 
-    'Điện thoại flagship từ Samsung', 
-    '{"RAM": "8GB", "Storage": "512GB", "Screen": "6.8 inch", "Camera": "200MP"}', 
-    22000000.00, 26990000.00, 12, 
-    'https://example.com/images/galaxys23ultra.jpg', 'active'),
-('PROD003', 'Xiaomi 13 Pro', 1, 3, 2, 
-    'Điện thoại cao cấp từ Xiaomi', 
-    '{"RAM": "12GB", "Storage": "256GB", "Screen": "6.73 inch", "Camera": "50MP"}', 
-    15000000.00, 18990000.00, 12, 
-    'https://example.com/images/xiaomi13pro.jpg', 'active'),
-('PROD004', 'AirPods Pro 2', 2, 1, 1, 
-    'Tai nghe không dây cao cấp từ Apple', 
-    '{"Type": "In-ear", "Battery": "6 hours", "ANC": "Yes"}', 
-    5000000.00, 6990000.00, 6, 
-    'https://example.com/images/airpodspro2.jpg', 'active'),
-('PROD005', 'Samsung Galaxy Tab S8', 3, 2, 1, 
-    'Máy tính bảng hiệu năng cao', 
-    '{"RAM": "8GB", "Storage": "128GB", "Screen": "11 inch"}', 
-    14000000.00, 17990000.00, 12, 
-    'https://example.com/images/galaxytabs8.jpg', 'active'),
-('PROD006', 'Apple Watch Series 8', 4, 1, 1, 
-    'Đồng hồ thông minh cao cấp', 
-    '{"Screen": "1.9 inch", "Battery": "18 hours", "Features": "ECG, SpO2"}', 
-    9000000.00, 11990000.00, 12, 
-    'https://example.com/images/applewatch8.jpg', 'active'),
-('PROD007', 'OPPO Reno8', 1, 4, 2, 
-    'Điện thoại tầm trung từ OPPO', 
-    '{"RAM": "8GB", "Storage": "128GB", "Screen": "6.4 inch", "Camera": "64MP"}', 
-    8000000.00, 9990000.00, 12, 
-    'https://example.com/images/opporeno8.jpg', 'active'),
-('PROD008', 'Vivo Y76', 1, 5, 2, 
-    'Điện thoại giá rẻ từ Vivo', 
-    '{"RAM": "6GB", "Storage": "128GB", "Screen": "6.58 inch", "Camera": "50MP"}', 
-    5000000.00, 6990000.00, 12, 
-    'https://example.com/images/vivoy76.jpg', 'active');
-GO
-
-INSERT INTO inventory (product_id, quantity_on_hand, quantity_reserved, min_stock_level, max_stock_level)
-VALUES
-(1, 50, 5, 10, 100), -- iPhone 14 Pro Max
-(2, 40, 3, 15, 80),  -- Samsung Galaxy S23 Ultra
-(3, 60, 10, 20, 120), -- Xiaomi 13 Pro
-(4, 100, 20, 30, 200), -- AirPods Pro 2
-(5, 30, 5, 10, 50),  -- Samsung Galaxy Tab S8
-(6, 25, 2, 5, 40),   -- Apple Watch Series 8
-(7, 70, 15, 20, 150), -- OPPO Reno8
-(8, 80, 10, 25, 160); -- Vivo Y76
+-- View báo cáo khuyến mãi còn hoạt động
+CREATE VIEW v_ActivePromotions
+AS
+SELECT *
+FROM promotions
+WHERE 
+    status = 'active'
+    AND CAST(GETDATE() AS DATE) BETWEEN start_date AND end_date
+    AND (usage_limit IS NULL OR used_count < usage_limit);
 GO
 
 -- =====================================================
--- 11. TẠO FUNCTION HỖ TRỢ
+-- 7. TẠO FUNCTION HỖ TRỢ
 -- =====================================================
 
 -- Function tạo order code tự động
@@ -987,7 +896,7 @@ RETURN
 GO
 
 -- =====================================================
--- 10. TẠO STORED PROCEDURES HỖ TRỢ
+-- 8. TẠO STORED PROCEDURES HỖ TRỢ
 -- =====================================================
 
 -- Procedure báo cáo doanh thu theo khoảng thời gian
@@ -1402,12 +1311,145 @@ BEGIN
 END
 GO
 
+-- Procedure lấy khuyến mãi bằng mã khuyến mãi
+CREATE PROCEDURE sp_GetPromotionByCode
+    @code NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
 
--- =====================================================
--- 1. TẠO CÁC DATABASE ROLE
--- =====================================================
+    SELECT *
+    FROM promotions
+    WHERE promotion_code = @code
+      AND status = 'active'
+      AND CAST(GETDATE() AS DATE) BETWEEN start_date AND end_date
+      AND (usage_limit IS NULL OR used_count < usage_limit);
+END
+GO
 
--- Tạo role cho Admin (toàn quyền)
+-- Procedure thêm khuyến mãi
+CREATE PROCEDURE sp_InsertPromotion
+    @code NVARCHAR(50),
+    @name NVARCHAR(100),
+    @description NVARCHAR(MAX),
+    @discountType NVARCHAR(20),
+    @discountValue DECIMAL(18, 2),
+    @startDate DATE,
+    @endDate DATE,
+    @minOrderAmount DECIMAL(18, 2),
+    @maxDiscountAmount DECIMAL(18, 2),
+    @usageLimit INT = NULL,
+    @status NVARCHAR(20)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        INSERT INTO promotions (
+            promotion_code, promotion_name, description, discount_type,
+            discount_value, start_date, end_date, min_order_amount,
+            max_discount_amount, usage_limit, status
+        )
+        VALUES (
+            @code, @name, @description, @discountType, @discountValue,
+            @startDate, @endDate, @minOrderAmount, @maxDiscountAmount, @usageLimit, @status
+        );
+
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK;
+        DECLARE @err NVARCHAR(4000) = ERROR_MESSAGE();
+        THROW 50001, @err, 1;
+    END CATCH
+END
+GO
+
+-- Procedure lấy tất cả các khuyến mãi
+CREATE PROCEDURE sp_GetAllPromotions
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    SELECT *
+    FROM promotions
+    ORDER BY created_at DESC;
+END
+GO
+
+-- Procedure cập nhật trạng thái khuyến mãi
+CREATE PROCEDURE sp_UpdatePromotionStatus
+    @promotionId INT,
+    @status NVARCHAR(20)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE promotions 
+    SET status = @status,
+        updated_at = GETDATE()
+    WHERE promotion_id = @promotionId;
+END
+GO
+
+-- Procedure xóa khuyến mãi
+CREATE PROCEDURE sp_DeletePromotion
+    @promotionId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        DELETE FROM promotions
+        WHERE promotion_id = @promotionId;
+
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK;
+        THROW; -- ném lỗi rõ ràng lên ứng dụng
+    END CATCH
+END
+GO
+
+-- Procedure cập nhật khuyến mãi
+CREATE PROCEDURE sp_UpdatePromotion
+    @promotionId INT,
+    @name NVARCHAR(100),
+    @description NVARCHAR(MAX),
+    @discountType NVARCHAR(20),
+    @discountValue DECIMAL(18, 2),
+    @startDate DATE,
+    @endDate DATE,
+    @minOrderAmount DECIMAL(18, 2),
+    @maxDiscountAmount DECIMAL(18, 2),
+    @usageLimit INT = NULL,
+    @status NVARCHAR(20)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    UPDATE promotions 
+    SET promotion_name = @name,
+        description = @description,
+        discount_type = @discountType,
+        discount_value = @discountValue,
+        start_date = @startDate,
+        end_date = @endDate,
+        min_order_amount = @minOrderAmount,
+        max_discount_amount = @maxDiscountAmount,
+        usage_limit = @usageLimit,
+        status = @status,
+        updated_at = GETDATE()
+    WHERE promotion_id = @promotionId;
+END
+GO
+
+-- Tạo role cho admin (admin cửa hàng)
 CREATE ROLE db_admin;
 GO
 
@@ -1428,7 +1470,7 @@ CREATE ROLE db_staff;
 GO
 
 -- =====================================================
--- 2. PHÂN QUYỀN CHO ADMIN ROLE (TOÀN QUYỀN)
+-- 10. PHÂN QUYỀN CHO ADMIN ROLE (TOÀN QUYỀN)
 -- =====================================================
 
 -- Admin có toàn quyền trên tất cả tables
@@ -1462,6 +1504,12 @@ GRANT EXECUTE ON sp_UpdateOrderStatus TO db_admin;
 GRANT EXECUTE ON sp_UpdatePaymentStatus TO db_admin;
 GRANT EXECUTE ON sp_GetTopSellingProducts TO db_admin;
 GRANT EXECUTE ON sp_GetEmployeePerformanceReport TO db_admin;
+GRANT EXECUTE ON sp_GetPromotionByCode TO db_admin;
+GRANT EXECUTE ON sp_InsertPromotion TO db_admin;
+GRANT EXECUTE ON sp_GetAllPromotions TO db_admin;
+GRANT EXECUTE ON sp_UpdatePromotionStatus TO db_admin;
+GRANT EXECUTE ON sp_DeletePromotion TO db_admin;
+GRANT EXECUTE ON sp_UpdatePromotion TO db_admin;
 GRANT EXECUTE ON GetRevenueReport TO db_admin;
 GRANT EXECUTE ON LoginUser TO db_admin;
 GRANT EXECUTE ON CheckUserRoles TO db_admin;
@@ -1470,6 +1518,7 @@ GRANT EXECUTE ON CheckUserRoles TO db_admin;
 -- Admin có quyền truy cập tất cả views
 GRANT SELECT ON v_AllActiveProducts TO db_admin;
 GRANT SELECT ON v_ActiveEmployees TO db_admin;
+GRANT SELECT ON v_ActivePromotions TO db_admin;
 GRANT SELECT ON daily_revenue_report TO db_admin;
 GRANT SELECT ON top_selling_products TO db_admin;
 GRANT SELECT ON employee_performance TO db_admin;
@@ -1483,7 +1532,7 @@ GRANT SELECT ON fn_GetAllOrders TO db_admin;
 GRANT SELECT ON fn_GetDailySalesReport TO db_admin;
 
 -- =====================================================
--- 3. PHÂN QUYỀN CHO MANAGER ROLE
+-- 11. PHÂN QUYỀN CHO MANAGER ROLE
 -- =====================================================
 
 -- Manager có quyền đọc hầu hết các bảng
@@ -1527,6 +1576,12 @@ GRANT EXECUTE ON sp_UpdateOrderStatus TO db_manager;
 GRANT EXECUTE ON sp_UpdatePaymentStatus TO db_manager;
 GRANT EXECUTE ON sp_GetTopSellingProducts TO db_manager;
 GRANT EXECUTE ON sp_GetEmployeePerformanceReport TO db_manager;
+GRANT EXECUTE ON sp_GetPromotionByCode TO db_manager;
+GRANT EXECUTE ON sp_InsertPromotion TO db_manager;
+GRANT EXECUTE ON sp_GetAllPromotions TO db_manager;
+GRANT EXECUTE ON sp_UpdatePromotionStatus TO db_manager;
+GRANT EXECUTE ON sp_DeletePromotion TO db_manager;
+GRANT EXECUTE ON sp_UpdatePromotion TO db_manager;
 GRANT EXECUTE ON GetRevenueReport TO db_manager;
 GRANT EXECUTE ON CheckUserRoles TO db_manager;
 GRANT EXECUTE ON LoginUser TO db_manager;
@@ -1535,6 +1590,7 @@ GRANT EXECUTE ON LoginUser TO db_manager;
 -- Manager có quyền truy cập tất cả views
 GRANT SELECT ON v_AllActiveProducts TO db_manager;
 GRANT SELECT ON v_ActiveEmployees TO db_manager;
+GRANT SELECT ON v_ActivePromotions TO db_manager;
 GRANT SELECT ON daily_revenue_report TO db_manager;
 GRANT SELECT ON top_selling_products TO db_manager;
 GRANT SELECT ON employee_performance TO db_manager;
@@ -1548,7 +1604,7 @@ GRANT SELECT ON fn_GetAllOrders TO db_manager;
 GRANT SELECT ON fn_GetDailySalesReport TO db_manager;
 
 -- =====================================================
--- 4. PHÂN QUYỀN TINH GỌN CHO CASHIER (BÁN HÀNG)
+-- 12. PHÂN QUYỀN TINH GỌN CHO CASHIER (BÁN HÀNG)
 -- =====================================================
 
 -- Cashier - Quyền SELECT cơ bản cho bán hàng
@@ -1583,6 +1639,7 @@ GRANT EXECUTE ON sp_InsertOrderDetail TO db_cashier;
 GRANT EXECUTE ON sp_InsertPayment TO db_cashier;
 GRANT EXECUTE ON sp_GetOrderById TO db_cashier;
 GRANT EXECUTE ON sp_GetOrderDetails TO db_cashier;
+GRANT EXECUTE ON sp_GetPromotionByCode TO db_cashier;
 GRANT EXECUTE ON CheckUserRoles TO db_cashier;
 GRANT EXECUTE ON LoginUser TO db_cashier;
 
@@ -1594,9 +1651,10 @@ GRANT SELECT ON fn_GetPaymentSummaryByOrderId TO db_cashier;
 -- Cashier - Views cần thiết
 GRANT SELECT ON v_AllActiveProducts TO db_cashier;
 GRANT SELECT ON v_ActiveEmployees TO db_cashier;
+GRANT SELECT ON v_ActivePromotions TO db_cashier;
 
 -- =====================================================
--- 5. PHÂN QUYỀN TINH GỌN CHO SALESPERSON (BÁN HÀNG + BÁO CÁO CƠ BẢN)
+-- 13. PHÂN QUYỀN TINH GỌN CHO SALESPERSON (BÁN HÀNG + BÁO CÁO CƠ BẢN)
 -- =====================================================
 
 -- Salesperson - Kế thừa tất cả quyền của Cashier
@@ -1631,6 +1689,8 @@ GRANT EXECUTE ON sp_InsertOrderDetail TO db_salesperson;
 GRANT EXECUTE ON sp_InsertPayment TO db_salesperson;
 GRANT EXECUTE ON sp_GetOrderById TO db_salesperson;
 GRANT EXECUTE ON sp_GetOrderDetails TO db_salesperson;
+GRANT EXECUTE ON sp_GetPromotionByCode TO db_salesperson;
+GRANT EXECUTE ON sp_GetAllPromotions TO db_salesperson;
 GRANT EXECUTE ON CheckUserRoles TO db_salesperson;
 GRANT EXECUTE ON LoginUser TO db_salesperson;
 
@@ -1649,11 +1709,12 @@ GRANT SELECT ON fn_GetAllOrders TO db_salesperson;
 -- Salesperson - Views cần thiết
 GRANT SELECT ON v_AllActiveProducts TO db_salesperson;
 GRANT SELECT ON v_ActiveEmployees TO db_salesperson;
+GRANT SELECT ON v_ActivePromotions TO db_salesperson;
 GRANT SELECT ON daily_revenue_report TO db_salesperson;
 GRANT SELECT ON top_selling_products TO db_salesperson;
 
 -- =====================================================
--- 6. PHÂN QUYỀN CHO STAFF ROLE
+-- 14. PHÂN QUYỀN CHO STAFF ROLE
 -- =====================================================
 
 -- Staff chỉ có quyền đọc thông tin cơ bản
@@ -1678,12 +1739,133 @@ GRANT EXECUTE ON sp_GetProductStock TO db_staff;
 GRANT EXECUTE ON sp_GetProductById TO db_staff;
 GRANT EXECUTE ON sp_GetOrderById TO db_staff;
 GRANT EXECUTE ON sp_GetOrderDetails TO db_staff;
+GRANT EXECUTE ON sp_GetPromotionByCode TO db_staff;
 GRANT EXECUTE ON CheckUserRoles TO db_staff;
 GRANT EXECUTE ON LoginUser TO db_staff;
 
 -- Staff có quyền truy cập view sản phẩm
 GRANT SELECT ON v_AllActiveProducts TO db_staff;
 GRANT SELECT ON v_ActiveEmployees TO db_staff;
+GRANT SELECT ON v_ActivePromotions TO db_staff;
+
+-- =====================================================
+-- 15. THÊM DỮ LIỆU MẪU
+-- =====================================================
+
+-- Thêm dữ liệu mẫu cho roles
+INSERT INTO roles (role_name, description) VALUES
+('Admin', N'Quản trị viên hệ thống, có toàn quyền'),
+('Manager', N'Quản lý cửa hàng, quản lý nhân viên và đơn hàng'),
+('Cashier', N'Thu ngân, xử lý thanh toán'),
+('Salesperson', N'Nhân viên bán hàng, tạo đơn hàng'),
+('Staff', N'Nhân viên cơ bản, hỗ trợ các công việc khác');
+GO
+
+-- Thêm dữ liệu mẫu cho categories
+INSERT INTO categories (category_name, description) VALUES
+(N'Điện thoại', N'Điện thoại thông minh các loại'),
+(N'Phụ kiện', N'Phụ kiện điện thoại'),
+(N'Tablet', N'Máy tính bảng'),
+(N'Đồng hồ thông minh', N'Smart watch các loại');
+GO
+
+-- Thêm dữ liệu mẫu cho brands
+INSERT INTO brands (brand_name, country_origin, description) VALUES
+('Apple', 'USA', N'Thương hiệu công nghệ hàng đầu'),
+('Samsung', 'South Korea', N'Tập đoàn công nghệ Hàn Quốc'),
+('Xiaomi', 'China', N'Thương hiệu công nghệ Trung Quốc'),
+('OPPO', 'China', N'Thương hiệu điện thoại'),
+('Vivo', 'China', N'Thương hiệu điện thoại');
+GO
+
+-- Thêm dữ liệu mẫu cho suppliers
+INSERT INTO suppliers (supplier_code, company_name, contact_person, phone, email, address) VALUES
+('SUP001', N'Công ty TNHH Phân phối A', N'Nguyễn Văn A', '0901234567', 'contact@supplier-a.com', N'123 Đường ABC, Quận 1, TP.HCM'),
+('SUP002', N'Công ty Cổ phần Thương mại B', N'Trần Thị B', '0902345678', 'info@supplier-b.com', N'456 Đường DEF, Quận 3, TP.HCM');
+GO
+
+-- Thêm dữ liệu mẫu cho employees (tự động tạo users và user_roles qua trigger)
+INSERT INTO employees (employee_code, full_name, phone, email, position, hire_date, salary) VALUES
+('EMP001', N'Nguyễn Văn Nam', '0911111111', 'nam@phonestore.com', N'Quản lý', '2023-01-01', 15000000),
+('EMP002', N'Trần Thị Lan', '0922222222', 'lan@phonestore.com', N'Thu ngân', '2023-02-01', 8000000),
+('EMP003', N'Lê Văn Hùng', '0933333333', 'hung@phonestore.com', N'Bán hàng', '2023-03-01', 10000000),
+('EMP004', N'Nguyễn Trí Lâm', '0772944071', 'nguyentrilam0304@gmail.com', N'Admin', '2023-03-01', 100000000);
+GO
+
+-- Thêm dữ liệu mẫu cho customers
+INSERT INTO customers (customer_code, full_name, phone, email, address, customer_type) VALUES
+('CUS001', N'Phạm Văn Khách', '0944444444', 'khach@email.com', N'789 Đường GHI, Quận 5, TP.HCM', 'regular'),
+('CUS002', N'Hoàng Thị Mai', '0955555555', 'mai@email.com', N'321 Đường JKL, Quận 7, TP.HCM', 'vip');
+GO
+
+-- Thêm dữ liệu mẫu cho products
+INSERT INTO products (
+    product_code, 
+    product_name, 
+    category_id, 
+    brand_id, 
+    supplier_id, 
+    description, 
+    specifications, 
+    cost_price, 
+    selling_price, 
+    warranty_period, 
+    image_url, 
+    status
+) VALUES
+('PROD001', 'iPhone 14 Pro Max', 1, 1, 1, 
+    'Điện thoại thông minh cao cấp từ Apple', 
+    '{"RAM": "6GB", "Storage": "256GB", "Screen": "6.7 inch", "Camera": "48MP"}', 
+    25000000.00, 29990000.00, 12, 
+    'https://example.com/images/iphone14promax.jpg', 'active'),
+('PROD002', 'Samsung Galaxy S23 Ultra', 1, 2, 1, 
+    'Điện thoại flagship từ Samsung', 
+    '{"RAM": "8GB", "Storage": "512GB", "Screen": "6.8 inch", "Camera": "200MP"}', 
+    22000000.00, 26990000.00, 12, 
+    'https://example.com/images/galaxys23ultra.jpg', 'active'),
+('PROD003', 'Xiaomi 13 Pro', 1, 3, 2, 
+    'Điện thoại cao cấp từ Xiaomi', 
+    '{"RAM": "12GB", "Storage": "256GB", "Screen": "6.73 inch", "Camera": "50MP"}', 
+    15000000.00, 18990000.00, 12, 
+    'https://example.com/images/xiaomi13pro.jpg', 'active'),
+('PROD004', 'AirPods Pro 2', 2, 1, 1, 
+    'Tai nghe không dây cao cấp từ Apple', 
+    '{"Type": "In-ear", "Battery": "6 hours", "ANC": "Yes"}', 
+    5000000.00, 6990000.00, 6, 
+    'https://example.com/images/airpodspro2.jpg', 'active'),
+('PROD005', 'Samsung Galaxy Tab S8', 3, 2, 1, 
+    'Máy tính bảng hiệu năng cao', 
+    '{"RAM": "8GB", "Storage": "128GB", "Screen": "11 inch"}', 
+    14000000.00, 17990000.00, 12, 
+    'https://example.com/images/galaxytabs8.jpg', 'active'),
+('PROD006', 'Apple Watch Series 8', 4, 1, 1, 
+    'Đồng hồ thông minh cao cấp', 
+    '{"Screen": "1.9 inch", "Battery": "18 hours", "Features": "ECG, SpO2"}', 
+    9000000.00, 11990000.00, 12, 
+    'https://example.com/images/applewatch8.jpg', 'active'),
+('PROD007', 'OPPO Reno8', 1, 4, 2, 
+    'Điện thoại tầm trung từ OPPO', 
+    '{"RAM": "8GB", "Storage": "128GB", "Screen": "6.4 inch", "Camera": "64MP"}', 
+    8000000.00, 9990000.00, 12, 
+    'https://example.com/images/opporeno8.jpg', 'active'),
+('PROD008', 'Vivo Y76', 1, 5, 2, 
+    'Điện thoại giá rẻ từ Vivo', 
+    '{"RAM": "6GB", "Storage": "128GB", "Screen": "6.58 inch", "Camera": "50MP"}', 
+    5000000.00, 6990000.00, 12, 
+    'https://example.com/images/vivoy76.jpg', 'active');
+GO
+
+INSERT INTO inventory (product_id, quantity_on_hand, quantity_reserved, min_stock_level, max_stock_level)
+VALUES
+(1, 50, 5, 10, 100), -- iPhone 14 Pro Max
+(2, 40, 3, 15, 80),  -- Samsung Galaxy S23 Ultra
+(3, 60, 10, 20, 120), -- Xiaomi 13 Pro
+(4, 100, 20, 30, 200), -- AirPods Pro 2
+(5, 30, 5, 10, 50),  -- Samsung Galaxy Tab S8
+(6, 25, 2, 5, 40),   -- Apple Watch Series 8
+(7, 70, 15, 20, 150), -- OPPO Reno8
+(8, 80, 10, 25, 160); -- Vivo Y76
+GO
 
 -- =====================================================
 -- KẾT THÚC SCRIPT TẠO CƠ SỞ DỮ LIỆU

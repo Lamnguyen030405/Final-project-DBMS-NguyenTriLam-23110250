@@ -115,6 +115,24 @@
     <Compile Include="Forms\frmOrderList.Designer.cs">
       <DependentUpon>frmOrderList.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\frmPromotionAdd.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmPromotionAdd.Designer.cs">
+      <DependentUpon>frmPromotionAdd.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmPromotionEdit.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmPromotionEdit.Designer.cs">
+      <DependentUpon>frmPromotionEdit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Forms\frmPromotionList.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\frmPromotionList.Designer.cs">
+      <DependentUpon>frmPromotionList.cs</DependentUpon>
+    </Compile>
     <Compile Include="Forms\frmSalesReport.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -168,6 +186,12 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmOrderList.resx">
       <DependentUpon>frmOrderList.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmPromotionEdit.resx">
+      <DependentUpon>frmPromotionEdit.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Forms\frmPromotionList.resx">
+      <DependentUpon>frmPromotionList.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Forms\frmSalesReport.resx">
       <DependentUpon>frmSalesReport.cs</DependentUpon>

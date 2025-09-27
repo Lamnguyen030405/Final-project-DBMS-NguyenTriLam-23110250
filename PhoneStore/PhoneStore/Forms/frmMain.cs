@@ -483,5 +483,18 @@ Giảng viên: [Tên giảng viên]
         {
             RefreshStats();
         }
+
+        private void mnuPromotionList_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var promotionListForm = new frmPromotionList();
+                promotionListForm.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                ExceptionHandler.HandleException(ex, "Lỗi mở form đơn hàng");
+            }
+        }
     }
 }

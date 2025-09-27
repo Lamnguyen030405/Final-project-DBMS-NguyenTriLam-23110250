@@ -84,6 +84,7 @@ namespace PhoneStore.Forms
             cboPaymentMethod.SelectedIndex = 0; // Default to cash
             SetupDataGridViews();
             LoadProducts();
+            LoadPromotions();
         }
 
         private void SetupDataGridViews()
@@ -465,7 +466,7 @@ namespace PhoneStore.Forms
 
         private void ApplyPromotionCode()
         {
-            string promotionCode = txtPromotionCode.Text.Trim();
+            string promotionCode = cboPromotionCode.Text.Trim();
 
             if (string.IsNullOrEmpty(promotionCode))
             {
@@ -518,7 +519,7 @@ namespace PhoneStore.Forms
                 {
                     CustomerId = selectedCustomer?.CustomerId,
                     PromotionId = currentPromotion?.PromotionId,
-                    PromotionCode = txtPromotionCode.Text.Trim(),
+                    PromotionCode = cboPromotionCode.Text.Trim(),
                     PaymentMethod = GetPaymentMethodCode(),
                     PaymentStatus = "pending",
                     Notes = "",
@@ -636,6 +637,49 @@ namespace PhoneStore.Forms
             selectedCustomer = null;
             txtCustomerName.Clear();
             txtCustomerPhone.Clear();
+        }
+
+
+        private void btnNewPromotion_Click(object sender, EventArgs e)
+        {
+            using (var frmPromotion = new frmPromotionAdd())
+            {
+                if (frmPromotion.ShowDialog() == DialogResult.OK)
+                {
+                    // Reload promotions after adding a new one
+                    LoadPromotions();
+
+                    // Select the newly created promotion
+                    if (frmPromotion.NewPromotion != null)
+                    {
+                        cboPromotionCode.Text = frmPromotion.NewPromotion.PromotionCode;
+                        ApplyPromotionCode();
+
+                        MessageBox.Show($"Khuyến mãi '{frmPromotion.NewPromotion.PromotionName}' đã được tạo và áp dụng!",
+                            "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+            }
+        }
+
+        private void LoadPromotions()
+        {
+            try
+            {
+                var promotions = promotionDao.GetActivePromotions();
+
+                cboPromotionCode.Items.Clear();
+                cboPromotionCode.Items.Add(""); // Empty option
+
+                foreach (var promotion in promotions)
+                {
+                    cboPromotionCode.Items.Add(promotion.PromotionCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading promotions: {ex.Message}");
+            }
         }
 
         #endregion

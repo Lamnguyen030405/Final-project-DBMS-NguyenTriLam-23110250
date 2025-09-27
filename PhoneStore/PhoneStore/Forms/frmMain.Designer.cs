@@ -100,6 +100,8 @@ namespace PhoneStore.Forms
             this.lblTodayOrders = new System.Windows.Forms.Label();
             this.lblTodayRevenue = new System.Windows.Forms.Label();
             this.timerDateTime = new System.Windows.Forms.Timer(this.components);
+            this.mnuPromotion = new System.Windows.Forms.ToolStripMenuItem();
+            this.mnuPromotionList = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip.SuspendLayout();
             this.statusStrip.SuspendLayout();
             this.pnlMain.SuspendLayout();
@@ -118,6 +120,7 @@ namespace PhoneStore.Forms
             this.mnuSystem,
             this.mnuProducts,
             this.mnuCustomers,
+            this.mnuPromotion,
             this.mnuOrders,
             this.mnuReports,
             this.mnuHelp});
@@ -291,7 +294,7 @@ namespace PhoneStore.Forms
             // mnuAbout
             // 
             this.mnuAbout.Name = "mnuAbout";
-            this.mnuAbout.Size = new System.Drawing.Size(168, 28);
+            this.mnuAbout.Size = new System.Drawing.Size(224, 28);
             this.mnuAbout.Text = "Giới thiệu";
             this.mnuAbout.Click += new System.EventHandler(this.mnuAbout_Click);
             // 
@@ -506,6 +509,22 @@ namespace PhoneStore.Forms
             this.timerDateTime.Interval = 1000;
             this.timerDateTime.Tick += new System.EventHandler(this.timerDateTime_Tick);
             // 
+            // mnuPromotion
+            // 
+            this.mnuPromotion.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.mnuPromotionList});
+            this.mnuPromotion.ForeColor = System.Drawing.Color.White;
+            this.mnuPromotion.Name = "mnuPromotion";
+            this.mnuPromotion.Size = new System.Drawing.Size(114, 27);
+            this.mnuPromotion.Text = "Khuyến mãi";
+            // 
+            // mnuPromotionList
+            // 
+            this.mnuPromotionList.Name = "mnuPromotionList";
+            this.mnuPromotionList.Size = new System.Drawing.Size(267, 28);
+            this.mnuPromotionList.Text = "Danh sách khuyến mãi";
+            this.mnuPromotionList.Click += new System.EventHandler(this.mnuPromotionList_Click);
+            // 
             // frmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
@@ -538,5 +557,7 @@ namespace PhoneStore.Forms
         }
 
         private Button btnRefreshStats;
+        private ToolStripMenuItem mnuPromotion;
+        private ToolStripMenuItem mnuPromotionList;
     }
 }

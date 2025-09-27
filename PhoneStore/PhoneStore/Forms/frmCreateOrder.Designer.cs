@@ -30,7 +30,6 @@
         private System.Windows.Forms.Label lblSubtotal;
         private System.Windows.Forms.Label lblSubtotalValue;
         private System.Windows.Forms.Label lblDiscount;
-        private System.Windows.Forms.TextBox txtPromotionCode;
         private System.Windows.Forms.Button btnApplyPromotion;
         private System.Windows.Forms.Label lblDiscountValue;
         private System.Windows.Forms.Label lblTax;
@@ -69,7 +68,6 @@
             this.lblTax = new System.Windows.Forms.Label();
             this.lblDiscountValue = new System.Windows.Forms.Label();
             this.btnApplyPromotion = new System.Windows.Forms.Button();
-            this.txtPromotionCode = new System.Windows.Forms.TextBox();
             this.lblDiscount = new System.Windows.Forms.Label();
             this.lblSubtotalValue = new System.Windows.Forms.Label();
             this.lblSubtotal = new System.Windows.Forms.Label();
@@ -91,6 +89,8 @@
             this.btnSearchCustomer = new System.Windows.Forms.Button();
             this.txtCustomerSearch = new System.Windows.Forms.TextBox();
             this.lblCustomerSearch = new System.Windows.Forms.Label();
+            this.cboPromotionCode = new System.Windows.Forms.ComboBox();
+            this.btnNewPromotion = new System.Windows.Forms.Button();
             this.pnlMain.SuspendLayout();
             this.pnlRight.SuspendLayout();
             this.pnlButtons.SuspendLayout();
@@ -164,6 +164,8 @@
             // 
             // gbOrderSummary
             // 
+            this.gbOrderSummary.Controls.Add(this.btnNewPromotion);
+            this.gbOrderSummary.Controls.Add(this.cboPromotionCode);
             this.gbOrderSummary.Controls.Add(this.cboPaymentMethod);
             this.gbOrderSummary.Controls.Add(this.lblPaymentMethod);
             this.gbOrderSummary.Controls.Add(this.lblTotalValue);
@@ -172,7 +174,6 @@
             this.gbOrderSummary.Controls.Add(this.lblTax);
             this.gbOrderSummary.Controls.Add(this.lblDiscountValue);
             this.gbOrderSummary.Controls.Add(this.btnApplyPromotion);
-            this.gbOrderSummary.Controls.Add(this.txtPromotionCode);
             this.gbOrderSummary.Controls.Add(this.lblDiscount);
             this.gbOrderSummary.Controls.Add(this.lblSubtotalValue);
             this.gbOrderSummary.Controls.Add(this.lblSubtotal);
@@ -266,21 +267,13 @@
             // btnApplyPromotion
             // 
             this.btnApplyPromotion.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.btnApplyPromotion.Location = new System.Drawing.Point(206, 107);
+            this.btnApplyPromotion.Location = new System.Drawing.Point(200, 114);
             this.btnApplyPromotion.Name = "btnApplyPromotion";
             this.btnApplyPromotion.Size = new System.Drawing.Size(80, 25);
             this.btnApplyPromotion.TabIndex = 4;
             this.btnApplyPromotion.Text = "Áp dụng";
             this.btnApplyPromotion.UseVisualStyleBackColor = true;
             this.btnApplyPromotion.Click += new System.EventHandler(this.btnApplyPromotion_Click);
-            // 
-            // txtPromotionCode
-            // 
-            this.txtPromotionCode.Font = new System.Drawing.Font("Segoe UI", 9F);
-            this.txtPromotionCode.Location = new System.Drawing.Point(23, 107);
-            this.txtPromotionCode.Name = "txtPromotionCode";
-            this.txtPromotionCode.Size = new System.Drawing.Size(171, 27);
-            this.txtPromotionCode.TabIndex = 3;
             // 
             // lblDiscount
             // 
@@ -518,6 +511,25 @@
             this.lblCustomerSearch.TabIndex = 0;
             this.lblCustomerSearch.Text = "Tìm kiếm (SĐT):";
             // 
+            // cboPromotionCode
+            // 
+            this.cboPromotionCode.FormattingEnabled = true;
+            this.cboPromotionCode.Location = new System.Drawing.Point(23, 110);
+            this.cboPromotionCode.Name = "cboPromotionCode";
+            this.cboPromotionCode.Size = new System.Drawing.Size(164, 31);
+            this.cboPromotionCode.TabIndex = 12;
+            // 
+            // btnNewPromotion
+            // 
+            this.btnNewPromotion.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.btnNewPromotion.Location = new System.Drawing.Point(286, 114);
+            this.btnNewPromotion.Name = "btnNewPromotion";
+            this.btnNewPromotion.Size = new System.Drawing.Size(115, 25);
+            this.btnNewPromotion.TabIndex = 13;
+            this.btnNewPromotion.Text = "Khuyến mãi";
+            this.btnNewPromotion.UseVisualStyleBackColor = true;
+            this.btnNewPromotion.Click += new System.EventHandler(this.btnNewPromotion_Click);
+            // 
             // frmCreateOrder
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
@@ -547,5 +559,8 @@
             this.ResumeLayout(false);
 
         }
+
+        private System.Windows.Forms.ComboBox cboPromotionCode;
+        private System.Windows.Forms.Button btnNewPromotion;
     }
 }
