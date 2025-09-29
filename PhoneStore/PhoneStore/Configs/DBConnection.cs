@@ -14,7 +14,7 @@ namespace PhoneStore.Configs
 
         public static string GetConnectionString()
         {
-            return $"Data Source=.;Initial Catalog=phone_store_db;User ID={Username};Password=default123";
+            return $"Data Source=.;Initial Catalog=phone_store_db;User ID={Username};Password={Password}";
         }
 
         private static string defaultConnStr = "Data Source=.;Initial Catalog=phone_store_db;Integrated Security=True;Encrypt=True;TrustServerCertificate=True";

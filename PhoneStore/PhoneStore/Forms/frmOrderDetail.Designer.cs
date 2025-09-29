@@ -28,11 +28,11 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle11 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle12 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle13 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle14 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle15 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle4 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle5 = new System.Windows.Forms.DataGridViewCellStyle();
             this.tabOrderDetail = new System.Windows.Forms.TabControl();
             this.tabPageOrderInfo = new System.Windows.Forms.TabPage();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
@@ -508,8 +508,8 @@
             // 
             // colQuantity
             // 
-            dataGridViewCellStyle11.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
-            this.colQuantity.DefaultCellStyle = dataGridViewCellStyle11;
+            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
+            this.colQuantity.DefaultCellStyle = dataGridViewCellStyle1;
             this.colQuantity.FillWeight = 60F;
             this.colQuantity.HeaderText = "SL";
             this.colQuantity.MinimumWidth = 6;
@@ -518,9 +518,9 @@
             // 
             // colUnitPrice
             // 
-            dataGridViewCellStyle12.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleRight;
-            dataGridViewCellStyle12.Format = "N0";
-            this.colUnitPrice.DefaultCellStyle = dataGridViewCellStyle12;
+            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleRight;
+            dataGridViewCellStyle2.Format = "N0";
+            this.colUnitPrice.DefaultCellStyle = dataGridViewCellStyle2;
             this.colUnitPrice.HeaderText = "Đơn giá";
             this.colUnitPrice.MinimumWidth = 6;
             this.colUnitPrice.Name = "colUnitPrice";
@@ -528,9 +528,9 @@
             // 
             // colDiscountPerItem
             // 
-            dataGridViewCellStyle13.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleRight;
-            dataGridViewCellStyle13.Format = "N0";
-            this.colDiscountPerItem.DefaultCellStyle = dataGridViewCellStyle13;
+            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleRight;
+            dataGridViewCellStyle3.Format = "N0";
+            this.colDiscountPerItem.DefaultCellStyle = dataGridViewCellStyle3;
             this.colDiscountPerItem.FillWeight = 80F;
             this.colDiscountPerItem.HeaderText = "Giảm giá";
             this.colDiscountPerItem.MinimumWidth = 6;
@@ -921,9 +921,9 @@
             // 
             // colAmount
             // 
-            dataGridViewCellStyle14.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleRight;
-            dataGridViewCellStyle14.Format = "N0";
-            this.colAmount.DefaultCellStyle = dataGridViewCellStyle14;
+            dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleRight;
+            dataGridViewCellStyle4.Format = "N0";
+            this.colAmount.DefaultCellStyle = dataGridViewCellStyle4;
             this.colAmount.HeaderText = "Số tiền";
             this.colAmount.MinimumWidth = 6;
             this.colAmount.Name = "colAmount";
@@ -939,8 +939,8 @@
             // 
             // colPaymentStatus
             // 
-            dataGridViewCellStyle15.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
-            this.colPaymentStatus.DefaultCellStyle = dataGridViewCellStyle15;
+            dataGridViewCellStyle5.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
+            this.colPaymentStatus.DefaultCellStyle = dataGridViewCellStyle5;
             this.colPaymentStatus.FillWeight = 80F;
             this.colPaymentStatus.HeaderText = "Trạng thái";
             this.colPaymentStatus.MinimumWidth = 6;
@@ -1039,7 +1039,7 @@
             this.btnUpdateStatus.Location = new System.Drawing.Point(360, 10);
             this.btnUpdateStatus.Margin = new System.Windows.Forms.Padding(4);
             this.btnUpdateStatus.Name = "btnUpdateStatus";
-            this.btnUpdateStatus.Size = new System.Drawing.Size(182, 42);
+            this.btnUpdateStatus.Size = new System.Drawing.Size(208, 42);
             this.btnUpdateStatus.TabIndex = 0;
             this.btnUpdateStatus.Text = "Cập nhật trạng thái";
             this.btnUpdateStatus.UseVisualStyleBackColor = true;

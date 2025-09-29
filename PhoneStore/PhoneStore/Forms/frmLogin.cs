@@ -76,7 +76,7 @@ namespace PhoneStore.Forms
                         SaveCredentials();
                     }
 
-                    ExceptionHandler.ShowSuccessMessage($"Chào mừng {SessionManager.GetUserDisplayName()}!");
+                    ExceptionHandler.ShowSuccessMessage($"Chào mừng {result.User.Position}: {SessionManager.GetUserDisplayName()}!");
 
                     this.Hide();
                     var mainForm = new frmMain();

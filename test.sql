@@ -1,4 +1,4 @@
-
+﻿
 -- =====================================================
 -- SCRIPT TẠO CƠ SỞ DỮ LIỆU HOÀN CHỈNH
 -- HỆ THỐNG QUẢN LÝ CỬA HÀNG ĐIỆN THOẠI (SQL SERVER)
@@ -17,7 +17,7 @@ GO
 -- 1. TẠO CÁC BẢNG CƠ BẢN
 -- =====================================================
 
--- Bảng Nhân viên (employees)
+-- Bảng Nhân viên (tạo trước vì được tham chiếu bởi users)
 CREATE TABLE employees (
     employee_id INT IDENTITY(1,1) PRIMARY KEY,
     employee_code NVARCHAR(20) UNIQUE NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE employees (
 );
 GO
 
--- Bảng Vai trò (roles)
+-- Bảng Vai trò (Roles)
 CREATE TABLE roles (
     role_id INT IDENTITY(1,1) PRIMARY KEY,
     role_name NVARCHAR(50) NOT NULL UNIQUE, -- Admin, Manager, Cashier, Salesperson
@@ -44,7 +44,7 @@ CREATE TABLE roles (
 );
 GO
 
--- Bảng Người dùng (users)
+-- Bảng Người dùng (Users)
 CREATE TABLE users (
     user_id INT IDENTITY(1,1) PRIMARY KEY,
     username NVARCHAR(50) UNIQUE NOT NULL,
@@ -58,7 +58,7 @@ CREATE TABLE users (
 );
 GO
 
--- Bảng Phân quyền (user_roles)
+-- Bảng Phân quyền (User_Roles)
 CREATE TABLE user_roles (
     user_id INT,
     role_id INT,
@@ -69,7 +69,7 @@ CREATE TABLE user_roles (
 );
 GO
 
--- Bảng Khách hàng (customers)
+-- Bảng Khách hàng
 CREATE TABLE customers (
     customer_id INT IDENTITY(1,1) PRIMARY KEY,
     customer_code NVARCHAR(20) UNIQUE NOT NULL,
@@ -86,7 +86,7 @@ CREATE TABLE customers (
 );
 GO
 
--- Bảng Nhà cung cấp (suppliers)
+-- Bảng Nhà cung cấp
 CREATE TABLE suppliers (
     supplier_id INT IDENTITY(1,1) PRIMARY KEY,
     supplier_code NVARCHAR(20) UNIQUE NOT NULL,
@@ -102,7 +102,7 @@ CREATE TABLE suppliers (
 );
 GO
 
--- Bảng Danh mục sản phẩm (categories)
+-- Bảng Danh mục sản phẩm
 CREATE TABLE categories (
     category_id INT IDENTITY(1,1) PRIMARY KEY,
     category_name NVARCHAR(100) NOT NULL,
@@ -113,7 +113,7 @@ CREATE TABLE categories (
 );
 GO
 
--- Bảng Thương hiệu (brands)
+-- Bảng Thương hiệu
 CREATE TABLE brands (
     brand_id INT IDENTITY(1,1) PRIMARY KEY,
     brand_name NVARCHAR(100) NOT NULL,
@@ -126,7 +126,7 @@ CREATE TABLE brands (
 );
 GO
 
--- Bảng Sản phẩm (products)
+-- Bảng Sản phẩm
 CREATE TABLE products (
     product_id INT IDENTITY(1,1) PRIMARY KEY,
     product_code NVARCHAR(50) UNIQUE NOT NULL,
@@ -149,7 +149,7 @@ CREATE TABLE products (
 );
 GO
 
--- Bảng Tồn kho (inventory)
+-- Bảng Tồn kho
 CREATE TABLE inventory (
     inventory_id INT IDENTITY(1,1) PRIMARY KEY,
     product_id INT,
@@ -168,7 +168,7 @@ GO
 -- 2. BẢNG QUẢN LÝ KHUYẾN MÃI
 -- =====================================================
 
--- Bảng Khuyến mãi (promotions)
+-- Bảng Khuyến mãi
 CREATE TABLE promotions (
     promotion_id INT IDENTITY(1,1) PRIMARY KEY,
     promotion_code NVARCHAR(20) UNIQUE NOT NULL,
@@ -192,7 +192,7 @@ GO
 -- 3. BẢNG QUẢN LÝ BÁN HÀNG
 -- =====================================================
 
--- Bảng Đơn hàng (orders)
+-- Bảng Đơn hàng
 CREATE TABLE orders (
     order_id INT IDENTITY(1,1) PRIMARY KEY,
     order_code NVARCHAR(20) UNIQUE NOT NULL,
@@ -216,7 +216,7 @@ CREATE TABLE orders (
 );
 GO
 
--- Bảng Chi tiết đơn hàng (order_details)
+-- Bảng Chi tiết đơn hàng
 CREATE TABLE order_details (
     detail_id INT IDENTITY(1,1) PRIMARY KEY,
     order_id INT,
@@ -232,7 +232,7 @@ CREATE TABLE order_details (
 );
 GO
 
--- Bảng Thanh toán (payments)
+-- Bảng Thanh toán
 CREATE TABLE payments (
     payment_id INT IDENTITY(1,1) PRIMARY KEY,
     order_id INT,
@@ -674,50 +674,53 @@ SELECT TOP 100 PERCENT
     CAST(order_date AS DATE) AS report_date,
     COUNT(*) AS total_orders,
     SUM(total_amount) AS total_revenue,
-    AVG(total_amount) AS avg_order_value
+    AVG(total_amount) AS avg_order_value,
+    SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END) AS paid_revenue
 FROM orders 
-WHERE order_status = 'completed'
+WHERE order_status IN ('completed', 'processing')
 GROUP BY CAST(order_date AS DATE)
 ORDER BY report_date DESC;
 GO
 
 -- View top sản phẩm bán chạy
 CREATE VIEW top_selling_products AS
-SELECT
+SELECT TOP 100 PERCENT
     p.product_id,
     p.product_name,
     p.product_code,
     b.brand_name,
     c.category_name,
-    od.order_id,
-    od.quantity,
-    od.total_price,
-    od.unit_price,
-    o.order_date
+    SUM(od.quantity) AS total_sold,
+    SUM(od.total_price) AS total_revenue,
+    COUNT(DISTINCT od.order_id) AS total_orders,
+    AVG(od.unit_price) AS avg_selling_price
 FROM products p
 INNER JOIN order_details od ON p.product_id = od.product_id
 INNER JOIN orders o ON od.order_id = o.order_id
 LEFT JOIN brands b ON p.brand_id = b.brand_id
 LEFT JOIN categories c ON p.category_id = c.category_id
-WHERE o.order_status = 'completed';
+WHERE o.order_status = 'completed'
+GROUP BY p.product_id, p.product_name, p.product_code, b.brand_name, c.category_name
+ORDER BY total_sold DESC;
 GO
 
 -- View báo cáo hiệu suất nhân viên
-CREATE VIEW employee_performance
-AS
-SELECT
+CREATE VIEW employee_performance AS
+SELECT TOP 100 PERCENT
     e.employee_id,
+    e.employee_code,
     e.full_name,
     e.position,
-    e.created_at,
-    o.order_id,
-    o.total_amount,
-    o.order_date
+    COUNT(o.order_id) AS total_orders,
+    SUM(o.total_amount) AS total_sales,
+    AVG(o.total_amount) AS avg_order_value,
+    MAX(o.order_date) AS last_sale_date,
+    FORMAT(MIN(o.order_date), 'yyyy-MM') AS first_sale_month
 FROM employees e
-LEFT JOIN orders o
-    ON e.employee_id = o.employee_id
-    AND o.order_status = 'completed'
-WHERE e.status = 'active';
+LEFT JOIN orders o ON e.employee_id = o.employee_id AND o.order_status = 'completed'
+WHERE e.status = 'active'
+GROUP BY e.employee_id, e.employee_code, e.full_name, e.position
+ORDER BY total_sales DESC;
 GO
 
 -- View báo cáo lợi nhuận
@@ -881,13 +884,14 @@ AS
 RETURN
 (
     SELECT 
-        report_date,
-        total_orders,
-        total_revenue,
-        avg_order_value
-    FROM daily_revenue_report
-    WHERE report_date BETWEEN @fromDate AND @toDate
-      AND total_orders > 0
+        CAST(order_date AS DATE) AS report_date,
+        COUNT(*) AS total_orders,
+        SUM(total_amount) AS total_revenue,
+        AVG(total_amount) AS avg_order_value
+    FROM orders 
+    WHERE order_status = 'completed'
+      AND CAST(order_date AS DATE) BETWEEN @fromDate AND @toDate
+    GROUP BY CAST(order_date AS DATE)
 );
 GO
 
@@ -1263,16 +1267,20 @@ BEGIN
     SET NOCOUNT ON;
 
     SELECT TOP (@topCount)
-        product_id,
-        product_name,
-        brand_name,
-        SUM(quantity) AS quantity_sold,
-        SUM(total_price) AS total_revenue,
-        AVG(unit_price) AS avg_price,
-        COUNT(DISTINCT order_id) AS total_orders
-    FROM top_selling_products
-    WHERE CAST(order_date AS DATE) BETWEEN @fromDate AND @toDate
-    GROUP BY product_id, product_name, brand_name
+        p.product_id,
+        p.product_name,
+        b.brand_name,
+        SUM(od.quantity) AS quantity_sold,
+        SUM(od.total_price) AS total_revenue,
+        AVG(od.unit_price) AS avg_price,
+        COUNT(DISTINCT od.order_id) AS total_orders
+    FROM products p
+    INNER JOIN order_details od ON p.product_id = od.product_id
+    INNER JOIN orders o ON od.order_id = o.order_id
+    LEFT JOIN brands b ON p.brand_id = b.brand_id
+    WHERE o.order_status = 'completed'
+      AND CAST(o.order_date AS DATE) BETWEEN @fromDate AND @toDate
+    GROUP BY p.product_id, p.product_name, b.brand_name
     ORDER BY quantity_sold DESC;
 END
 GO
@@ -1286,18 +1294,19 @@ BEGIN
     SET NOCOUNT ON;
 
     SELECT 
-        ep.employee_id,
-        ep.full_name,
-        ep.position,
-        COUNT(ep.order_id) AS total_orders,
-        COALESCE(SUM(ep.total_amount), 0) AS total_sales,
-        COALESCE(AVG(ep.total_amount), 0) AS avg_order_value,
-        COALESCE(MAX(ep.order_date), ep.created_at) AS last_sale_date
-    FROM employee_performance ep
-    WHERE 
-        ep.order_date IS NULL -- nhân viên chưa bán
-        OR CAST(ep.order_date AS DATE) BETWEEN @fromDate AND @toDate
-    GROUP BY ep.employee_id, ep.full_name, ep.position, ep.created_at
+        e.employee_id,
+        e.full_name,
+        e.position,
+        COUNT(o.order_id) AS total_orders,
+        COALESCE(SUM(o.total_amount), 0) AS total_sales,
+        COALESCE(AVG(o.total_amount), 0) AS avg_order_value,
+        COALESCE(MAX(o.order_date), e.created_at) AS last_sale_date
+    FROM employees e
+    LEFT JOIN orders o ON e.employee_id = o.employee_id 
+        AND o.order_status = 'completed'
+        AND CAST(o.order_date AS DATE) BETWEEN @fromDate AND @toDate
+    WHERE e.status = 'active'
+    GROUP BY e.employee_id, e.full_name, e.position, e.created_at
     ORDER BY total_sales DESC;
 END
 GO

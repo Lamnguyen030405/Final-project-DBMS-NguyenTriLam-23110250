@@ -78,44 +78,43 @@ namespace PhoneStore.Forms
 
         private void SetupRoleBasedAccess()
         {
-            try
-            {
-                // Admin có full quyền
-                if (SessionManager.IsAdmin)
-                {
-                    return; // Có tất cả quyền
-                }
+            //try
+            //{
+            //    // Admin có full quyền
+            //    if (SessionManager.IsAdmin)
+            //    {
+            //        return; // Có tất cả quyền
+            //    }
 
-                // Manager có hầu hết quyền
-                if (SessionManager.IsManager)
-                {
-                    return; // Có hầu hết quyền
-                }
+            //    // Manager có hầu hết quyền
+            //    if (SessionManager.IsManager)
+            //    {
+            //        return; // Có hầu hết quyền
+            //    }
 
-                // Cashier chỉ có quyền tạo đơn hàng và xem khách hàng
-                if (SessionManager.IsCashier)
-                {
-                    mnuProducts.Enabled = false;
-                    mnuReports.Enabled = false;
-                    return;
-                }
+            //    // Cashier chỉ có quyền tạo đơn hàng và xem khách hàng
+            //    if (SessionManager.IsCashier)
+            //    {
+            //        mnuProducts.Enabled = false;
+            //        mnuReports.Enabled = false;
+            //        return;
+            //    }
 
-                // Salesperson có quyền bán hàng và quản lý khách hàng
-                if (SessionManager.IsSalesperson)
-                {
-                    mnuReports.Enabled = false;
-                    return;
-                }
+            //    // Salesperson có quyền bán hàng và quản lý khách hàng
+            //    if (SessionManager.IsSalesperson)
+            //    {
+            //        return;
+            //    }
 
-                // Staff có quyền hạn chế
-                mnuProducts.Enabled = false;
-                mnuReports.Enabled = false;
-                mnuCustomers.Enabled = false;
-            }
-            catch (Exception ex)
-            {
-                ExceptionHandler.HandleException(ex, "Lỗi thiết lập phân quyền", false);
-            }
+            //    // Staff có quyền hạn chế
+            //    mnuProducts.Enabled = false;
+            //    mnuReports.Enabled = false;
+            //    mnuCustomers.Enabled = false;
+            //}
+            //catch (Exception ex)
+            //{
+            //    ExceptionHandler.HandleException(ex, "Lỗi thiết lập phân quyền", false);
+            //}
         }
 
         // =====================================================
