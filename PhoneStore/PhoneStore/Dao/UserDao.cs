@@ -16,7 +16,6 @@ namespace PhoneStore.Dao
         {
             try
             {
-                //string passwordHash = HashPassword(password);
                 int result = 0, userId = 0;
 
                 var parameters = new SqlParameter[]

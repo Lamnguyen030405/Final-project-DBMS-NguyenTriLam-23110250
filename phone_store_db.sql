@@ -268,6 +268,7 @@ GO
 -- 5. TẠO CÁC TRIGGER TỰ ĐỘNG
 -- =====================================================
 
+-- Function hash password
 CREATE FUNCTION dbo.HashPassword (@password NVARCHAR(256))
 RETURNS NVARCHAR(64)
 AS
@@ -802,6 +803,7 @@ BEGIN
     RETURN @code;
 END
 GO
+
 -- Function tạo customer code tự động
 CREATE FUNCTION fn_GenerateCustomerCode()
 RETURNS NVARCHAR(50)
@@ -840,6 +842,7 @@ RETURN
     GROUP BY o.order_id, o.order_code, o.total_amount, o.payment_status
 );
 GO
+
 -- Function lấy tất cả các order trong khoảng thời gian đã cho
 CREATE FUNCTION fn_GetAllOrders
 (
@@ -870,6 +873,7 @@ RETURN
         c.full_name, e.full_name
 );
 GO
+
 -- Function lấy báo cáo bán doanh thu theo ngày trong khoảng thời gian đã cho
 CREATE FUNCTION fn_GetDailySalesReport
 (
@@ -1503,6 +1507,7 @@ GRANT EXECUTE ON sp_DeletePromotion TO db_admin;
 GRANT EXECUTE ON sp_UpdatePromotion TO db_admin;
 GRANT EXECUTE ON GetRevenueReport TO db_admin;
 GRANT EXECUTE ON LoginUser TO db_admin;
+GRANT EXECUTE ON sp_CreateDatabaseUser TO db_admin;
 GRANT EXECUTE ON CheckUserRoles TO db_admin;
 
 
@@ -1576,6 +1581,7 @@ GRANT EXECUTE ON sp_UpdatePromotion TO db_manager;
 GRANT EXECUTE ON GetRevenueReport TO db_manager;
 GRANT EXECUTE ON CheckUserRoles TO db_manager;
 GRANT EXECUTE ON LoginUser TO db_manager;
+GRANT EXECUTE ON sp_CreateDatabaseUser TO db_manager;
 
 
 -- Manager có quyền truy cập tất cả views
@@ -1595,7 +1601,7 @@ GRANT SELECT ON fn_GetAllOrders TO db_manager;
 GRANT SELECT ON fn_GetDailySalesReport TO db_manager;
 
 -- =====================================================
--- 12. PHÂN QUYỀN TINH GỌN CHO CASHIER (THU NGÂN)
+-- 12. PHÂN QUYỀN CHO CASHIER (THU NGÂN)
 -- =====================================================
 
 -- Cashier - Quyền SELECT cơ bản cho bán hàng
@@ -1638,6 +1644,7 @@ GRANT EXECUTE ON sp_GetPromotionByCode TO db_cashier;
 GRANT EXECUTE ON sp_GetAllPromotions TO db_cashier;
 GRANT EXECUTE ON CheckUserRoles TO db_cashier;
 GRANT EXECUTE ON LoginUser TO db_cashier;
+GRANT EXECUTE ON sp_CreateDatabaseUser TO db_cashier;
 
 -- Cashier - Functions cần thiết
 GRANT EXECUTE ON fn_GenerateOrderCode TO db_cashier;
@@ -1651,7 +1658,7 @@ GRANT SELECT ON v_ActiveEmployees TO db_cashier;
 GRANT SELECT ON v_ActivePromotions TO db_cashier;
 
 -- =====================================================
--- 13. PHÂN QUYỀN TINH GỌN CHO SALESPERSON (BÁN HÀNG + BÁO CÁO CƠ BẢN)
+-- 13. PHÂN QUYỀN CHO SALESPERSON (BÁN HÀNG + BÁO CÁO CƠ BẢN)
 -- =====================================================
 
 -- Salesperson - Kế thừa tất cả quyền của Cashier
@@ -1694,6 +1701,7 @@ GRANT EXECUTE ON sp_GetPromotionByCode TO db_salesperson;
 GRANT EXECUTE ON sp_GetAllPromotions TO db_salesperson;
 GRANT EXECUTE ON CheckUserRoles TO db_salesperson;
 GRANT EXECUTE ON LoginUser TO db_salesperson;
+GRANT EXECUTE ON sp_CreateDatabaseUser TO db_salesperson;
 
 
 -- Salesperson - Stored procedures báo cáo doanh thu
@@ -1743,6 +1751,7 @@ GRANT EXECUTE ON sp_GetOrderDetails TO db_staff;
 GRANT EXECUTE ON sp_GetPromotionByCode TO db_staff;
 GRANT EXECUTE ON CheckUserRoles TO db_staff;
 GRANT EXECUTE ON LoginUser TO db_staff;
+GRANT EXECUTE ON sp_CreateDatabaseUser TO db_staff;
 
 -- Staff có quyền truy cập view sản phẩm
 GRANT SELECT ON v_AllActiveProducts TO db_staff;

@@ -360,37 +360,37 @@ namespace PhoneStore.Forms
 
         private void btnAddPayment_Click(object sender, EventArgs e)
         {
-            //try
-            //{
-            //    if (order == null || !CanAddPayment())
-            //    {
-            //        ExceptionHandler.ShowValidationError("Không thể thêm thanh toán cho đơn hàng này.");
-            //        return;
-            //    }
+            try
+            {
+                if (order == null || !CanAddPayment())
+                {
+                    ExceptionHandler.ShowValidationError("Không thể thêm thanh toán cho đơn hàng này.");
+                    return;
+                }
 
-            //    // TODO: Open payment form
-            //    var paymentRequest = new PaymentRequest
-            //    {
-            //        OrderId = order.OrderId,
-            //        PaymentMethod = order.PaymentMethod,
-            //        Amount = paymentSummary?.RemainingAmount ?? 0
-            //    };
+                // TODO: Open payment form
+                var paymentRequest = new PaymentRequest
+                {
+                    OrderId = order.OrderId,
+                    PaymentMethod = order.PaymentMethod,
+                    Amount = paymentSummary?.RemainingAmount ?? 0
+                };
 
-            //    using (var form = new frmAddPayment(paymentRequest))
-            //    {
-            //        if (form.ShowDialog() == DialogResult.OK)
-            //        {
-            //            // Reload payment data
-            //            LoadPaymentHistory();
-            //            LoadPaymentSummary();
-            //            ExceptionHandler.ShowSuccessMessage("Thêm thanh toán thành công!");
-            //        }
-            //    }
-            //}
-            //catch (Exception ex)
-            //{
-            //    ExceptionHandler.HandleException(ex, "Lỗi thêm thanh toán");
-            //}
+                using (var form = new frmAddPayment(paymentRequest))
+                {
+                    if (form.ShowDialog() == DialogResult.OK)
+                    {
+                        // Reload payment data
+                        LoadPaymentHistory();
+                        LoadPaymentSummary();
+                        ExceptionHandler.ShowSuccessMessage("Thêm thanh toán thành công!");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ExceptionHandler.HandleException(ex, "Lỗi thêm thanh toán");
+            }
         }
 
         private void btnPrintInvoice_Click(object sender, EventArgs e)

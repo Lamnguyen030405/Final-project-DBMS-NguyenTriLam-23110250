@@ -15,7 +15,6 @@
         private System.Windows.Forms.Button btnLogin;
         private System.Windows.Forms.Button btnExit;
         private System.Windows.Forms.PictureBox picLogo;
-        private System.Windows.Forms.CheckBox chkRemember;
 
         protected override void Dispose(bool disposing)
         {
@@ -32,7 +31,6 @@
             this.gbLogin = new System.Windows.Forms.GroupBox();
             this.btnExit = new System.Windows.Forms.Button();
             this.btnLogin = new System.Windows.Forms.Button();
-            this.chkRemember = new System.Windows.Forms.CheckBox();
             this.txtPassword = new System.Windows.Forms.TextBox();
             this.lblPassword = new System.Windows.Forms.Label();
             this.txtUsername = new System.Windows.Forms.TextBox();
@@ -62,7 +60,6 @@
             // 
             this.gbLogin.Controls.Add(this.btnExit);
             this.gbLogin.Controls.Add(this.btnLogin);
-            this.gbLogin.Controls.Add(this.chkRemember);
             this.gbLogin.Controls.Add(this.txtPassword);
             this.gbLogin.Controls.Add(this.lblPassword);
             this.gbLogin.Controls.Add(this.txtUsername);
@@ -102,16 +99,6 @@
             this.btnLogin.Text = "Đăng nhập";
             this.btnLogin.UseVisualStyleBackColor = false;
             this.btnLogin.Click += new System.EventHandler(this.btnLogin_Click);
-            // 
-            // chkRemember
-            // 
-            this.chkRemember.AutoSize = true;
-            this.chkRemember.Location = new System.Drawing.Point(34, 203);
-            this.chkRemember.Name = "chkRemember";
-            this.chkRemember.Size = new System.Drawing.Size(169, 27);
-            this.chkRemember.TabIndex = 4;
-            this.chkRemember.Text = "Ghi nhớ tài khoản";
-            this.chkRemember.UseVisualStyleBackColor = true;
             // 
             // txtPassword
             // 

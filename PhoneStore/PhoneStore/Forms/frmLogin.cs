@@ -70,11 +70,11 @@ namespace PhoneStore.Forms
                 {
                     SessionManager.SetCurrentUser(result.User);
 
-                    // Save credentials if remember is checked
-                    if (chkRemember.Checked)
-                    {
-                        SaveCredentials();
-                    }
+                    //// Save credentials if remember is checked
+                    //if (chkRemember.Checked)
+                    //{
+                    //    SaveCredentials();
+                    //}
 
                     ExceptionHandler.ShowSuccessMessage($"Chào mừng {result.User.Position}: {SessionManager.GetUserDisplayName()}!");
 
@@ -148,7 +148,7 @@ namespace PhoneStore.Forms
                 if (!string.IsNullOrEmpty(savedUsername))
                 {
                     txtUsername.Text = savedUsername;
-                    chkRemember.Checked = true;
+                    //chkRemember.Checked = true;
                 }
             }
             catch
@@ -157,17 +157,17 @@ namespace PhoneStore.Forms
             }
         }
 
-        private void SaveCredentials()
-        {
-            try
-            {
-                Properties.Settings.Default.SavedUsername = txtUsername.Text.Trim();
-                Properties.Settings.Default.Save();
-            }
-            catch
-            {
-                // Ignore errors when saving credentials
-            }
-        }
+        //private void SaveCredentials()
+        //{
+        //    try
+        //    {
+        //        Properties.Settings.Default.SavedUsername = txtUsername.Text.Trim();
+        //        Properties.Settings.Default.Save();
+        //    }
+        //    catch
+        //    {
+        //        // Ignore errors when saving credentials
+        //    }
+        //}
     }
 }
