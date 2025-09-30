@@ -117,6 +117,39 @@ namespace PhoneStore.Services
             }
         }
 
+        public ServiceResult<bool> DeletePayment(int paymentId)
+        {
+            try
+            {
+                var payment = paymentDao.GetPaymentById(paymentId);
+                if (payment == null)
+                {
+                    return ServiceResult<bool>.Error("Không tìm thấy thông tin thanh toán.");
+                }
+
+                if (payment.Status == "failed")
+                {
+                    return ServiceResult<bool>.Error("Thanh toán đã bị hủy trước đó.");
+                }
+
+                // Xóa thanh toán
+                var result = paymentDao.DeletePayment(paymentId);
+
+                if (result)
+                {
+                    return ServiceResult<bool>.Success(true, "Xóa thanh toán thành công!");
+                }
+                else
+                {
+                    return ServiceResult<bool>.Error("Không thể xóa thanh toán.");
+                }
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<bool>.Error($"Lỗi xóa thanh toán: {ex.Message}");
+            }
+        }
+
         public ServiceResult<bool> UpdatePayment(Payment payment)
         {
             try

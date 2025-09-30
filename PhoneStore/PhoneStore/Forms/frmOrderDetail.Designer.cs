@@ -28,11 +28,11 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle6 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle7 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle8 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle9 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle10 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle16 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle17 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle18 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle19 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle20 = new System.Windows.Forms.DataGridViewCellStyle();
             this.tabOrderDetail = new System.Windows.Forms.TabControl();
             this.tabPageOrderInfo = new System.Windows.Forms.TabPage();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
@@ -86,6 +86,7 @@
             this.txtCustomerName = new System.Windows.Forms.TextBox();
             this.label16 = new System.Windows.Forms.Label();
             this.tabPagePaymentHistory = new System.Windows.Forms.TabPage();
+            this.btnDeletePayment = new System.Windows.Forms.Button();
             this.groupBox6 = new System.Windows.Forms.GroupBox();
             this.lblPaymentProgress = new System.Windows.Forms.Label();
             this.progressPayment = new System.Windows.Forms.ProgressBar();
@@ -508,8 +509,8 @@
             // 
             // colQuantity
             // 
-            dataGridViewCellStyle6.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
-            this.colQuantity.DefaultCellStyle = dataGridViewCellStyle6;
+            dataGridViewCellStyle16.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
+            this.colQuantity.DefaultCellStyle = dataGridViewCellStyle16;
             this.colQuantity.FillWeight = 60F;
             this.colQuantity.HeaderText = "SL";
             this.colQuantity.MinimumWidth = 6;
@@ -518,9 +519,9 @@
             // 
             // colUnitPrice
             // 
-            dataGridViewCellStyle7.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleRight;
-            dataGridViewCellStyle7.Format = "N0";
-            this.colUnitPrice.DefaultCellStyle = dataGridViewCellStyle7;
+            dataGridViewCellStyle17.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleRight;
+            dataGridViewCellStyle17.Format = "N0";
+            this.colUnitPrice.DefaultCellStyle = dataGridViewCellStyle17;
             this.colUnitPrice.HeaderText = "Đơn giá";
             this.colUnitPrice.MinimumWidth = 6;
             this.colUnitPrice.Name = "colUnitPrice";
@@ -528,9 +529,9 @@
             // 
             // colDiscountPerItem
             // 
-            dataGridViewCellStyle8.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleRight;
-            dataGridViewCellStyle8.Format = "N0";
-            this.colDiscountPerItem.DefaultCellStyle = dataGridViewCellStyle8;
+            dataGridViewCellStyle18.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleRight;
+            dataGridViewCellStyle18.Format = "N0";
+            this.colDiscountPerItem.DefaultCellStyle = dataGridViewCellStyle18;
             this.colDiscountPerItem.FillWeight = 80F;
             this.colDiscountPerItem.HeaderText = "Giảm giá";
             this.colDiscountPerItem.MinimumWidth = 6;
@@ -568,6 +569,7 @@
             // 
             // btnViewCustomerHistory
             // 
+            this.btnViewCustomerHistory.BackColor = System.Drawing.Color.Blue;
             this.btnViewCustomerHistory.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnViewCustomerHistory.Location = new System.Drawing.Point(8, 308);
             this.btnViewCustomerHistory.Margin = new System.Windows.Forms.Padding(4);
@@ -575,7 +577,7 @@
             this.btnViewCustomerHistory.Size = new System.Drawing.Size(200, 37);
             this.btnViewCustomerHistory.TabIndex = 1;
             this.btnViewCustomerHistory.Text = "Xem lịch sử mua hàng";
-            this.btnViewCustomerHistory.UseVisualStyleBackColor = true;
+            this.btnViewCustomerHistory.UseVisualStyleBackColor = false;
             this.btnViewCustomerHistory.Click += new System.EventHandler(this.btnViewCustomerHistory_Click);
             // 
             // groupBox4
@@ -732,6 +734,7 @@
             // 
             // tabPagePaymentHistory
             // 
+            this.tabPagePaymentHistory.Controls.Add(this.btnDeletePayment);
             this.tabPagePaymentHistory.Controls.Add(this.groupBox6);
             this.tabPagePaymentHistory.Controls.Add(this.groupBox5);
             this.tabPagePaymentHistory.Controls.Add(this.btnAddPayment);
@@ -743,6 +746,19 @@
             this.tabPagePaymentHistory.TabIndex = 2;
             this.tabPagePaymentHistory.Text = "Lịch sử thanh toán";
             this.tabPagePaymentHistory.UseVisualStyleBackColor = true;
+            // 
+            // btnDeletePayment
+            // 
+            this.btnDeletePayment.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(128)))), ((int)(((byte)(128)))));
+            this.btnDeletePayment.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnDeletePayment.Location = new System.Drawing.Point(218, 147);
+            this.btnDeletePayment.Margin = new System.Windows.Forms.Padding(4);
+            this.btnDeletePayment.Name = "btnDeletePayment";
+            this.btnDeletePayment.Size = new System.Drawing.Size(195, 42);
+            this.btnDeletePayment.TabIndex = 3;
+            this.btnDeletePayment.Text = "Xóa thanh toán";
+            this.btnDeletePayment.UseVisualStyleBackColor = false;
+            this.btnDeletePayment.Click += new System.EventHandler(this.btnDeletePayment_Click);
             // 
             // groupBox6
             // 
@@ -921,9 +937,9 @@
             // 
             // colAmount
             // 
-            dataGridViewCellStyle9.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleRight;
-            dataGridViewCellStyle9.Format = "N0";
-            this.colAmount.DefaultCellStyle = dataGridViewCellStyle9;
+            dataGridViewCellStyle19.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleRight;
+            dataGridViewCellStyle19.Format = "N0";
+            this.colAmount.DefaultCellStyle = dataGridViewCellStyle19;
             this.colAmount.HeaderText = "Số tiền";
             this.colAmount.MinimumWidth = 6;
             this.colAmount.Name = "colAmount";
@@ -939,8 +955,8 @@
             // 
             // colPaymentStatus
             // 
-            dataGridViewCellStyle10.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
-            this.colPaymentStatus.DefaultCellStyle = dataGridViewCellStyle10;
+            dataGridViewCellStyle20.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
+            this.colPaymentStatus.DefaultCellStyle = dataGridViewCellStyle20;
             this.colPaymentStatus.FillWeight = 80F;
             this.colPaymentStatus.HeaderText = "Trạng thái";
             this.colPaymentStatus.MinimumWidth = 6;
@@ -957,6 +973,7 @@
             // 
             // btnAddPayment
             // 
+            this.btnAddPayment.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(128)))), ((int)(((byte)(255)))), ((int)(((byte)(128)))));
             this.btnAddPayment.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnAddPayment.Location = new System.Drawing.Point(8, 148);
             this.btnAddPayment.Margin = new System.Windows.Forms.Padding(4);
@@ -964,7 +981,7 @@
             this.btnAddPayment.Size = new System.Drawing.Size(202, 42);
             this.btnAddPayment.TabIndex = 0;
             this.btnAddPayment.Text = "Thêm thanh toán";
-            this.btnAddPayment.UseVisualStyleBackColor = true;
+            this.btnAddPayment.UseVisualStyleBackColor = false;
             this.btnAddPayment.Click += new System.EventHandler(this.btnAddPayment_Click);
             // 
             // panel1
@@ -1177,7 +1194,6 @@
         private System.Windows.Forms.Button btnPrintPreview;
         private System.Windows.Forms.Button btnPrintInvoice;
         private System.Windows.Forms.Button btnUpdateStatus;
-
-
+        private System.Windows.Forms.Button btnDeletePayment;
     }
 }

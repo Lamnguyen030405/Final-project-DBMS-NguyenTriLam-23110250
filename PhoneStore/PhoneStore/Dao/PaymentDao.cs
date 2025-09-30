@@ -171,7 +171,7 @@ namespace PhoneStore.Dao
                                 if (rowsAffected > 0)
                                 {
                                     // Update order payment status
-                                    UpdateOrderPaymentStatus(payment.OrderId, conn, transaction);
+                                    UpdateOrderPaymentStatus(payment.OrderId);
                                     transaction.Commit();
                                     return true;
                                 }
@@ -198,44 +198,13 @@ namespace PhoneStore.Dao
         {
             try
             {
-                // Get payment info before deleting
-                var payment = GetPaymentById(paymentId);
-                if (payment == null) return false;
-
-                using (var conn = GetConnection())
+                var parameters = new SqlParameter[]
                 {
-                    conn.Open();
-                    using (var transaction = conn.BeginTransaction())
-                    {
-                        try
-                        {
-                            string deleteQuery = "DELETE FROM payments WHERE payment_id = @paymentId";
+                    new SqlParameter("@paymentId", paymentId)
+                };
 
-                            using (var cmd = new SqlCommand(deleteQuery, conn, transaction))
-                            {
-                                cmd.Parameters.Add(new SqlParameter("@paymentId", paymentId));
-
-                                int rowsAffected = cmd.ExecuteNonQuery();
-
-                                if (rowsAffected > 0)
-                                {
-                                    // Update order payment status
-                                    UpdateOrderPaymentStatus(payment.OrderId, conn, transaction);
-                                    transaction.Commit();
-                                    return true;
-                                }
-                            }
-
-                            transaction.Rollback();
-                            return false;
-                        }
-                        catch
-                        {
-                            transaction.Rollback();
-                            throw;
-                        }
-                    }
-                }
+                ExecuteNonQuery("sp_DeletePayment", parameters, isStoredProcedure: true);
+                return true;
             }
             catch (Exception ex)
             {
@@ -243,67 +212,20 @@ namespace PhoneStore.Dao
             }
         }
 
-        private void UpdateOrderPaymentStatus(int orderId, SqlConnection conn, SqlTransaction transaction)
+        public void UpdateOrderPaymentStatus(int orderId)
         {
             try
             {
-                // Get payment summary for the order
-                string summaryQuery = @"
-                    SELECT 
-                        o.total_amount,
-                        COALESCE(SUM(CASE WHEN p.status = 'successful' THEN p.amount ELSE 0 END), 0) as paid_amount
-                    FROM orders o
-                    LEFT JOIN payments p ON o.order_id = p.order_id
-                    WHERE o.order_id = @orderId
-                    GROUP BY o.total_amount";
-
-                using (var cmd = new SqlCommand(summaryQuery, conn, transaction))
+                var parameters = new SqlParameter[]
                 {
-                    cmd.Parameters.Add(new SqlParameter("@orderId", orderId));
+                    new SqlParameter("@orderId", orderId)
+                };
 
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            decimal totalAmount = Convert.ToDecimal(reader["total_amount"]);
-                            decimal paidAmount = Convert.ToDecimal(reader["paid_amount"]);
-
-                            string paymentStatus;
-                            if (paidAmount == 0)
-                            {
-                                paymentStatus = "pending";
-                            }
-                            else if (paidAmount >= totalAmount)
-                            {
-                                paymentStatus = "paid";
-                            }
-                            else
-                            {
-                                paymentStatus = "partial";
-                            }
-
-                            reader.Close();
-
-                            // Update order payment status
-                            string updateQuery = "UPDATE orders SET payment_status = @paymentStatus WHERE order_id = @orderId";
-
-                            using (var updateCmd = new SqlCommand(updateQuery, conn, transaction))
-                            {
-                                updateCmd.Parameters.AddRange(new SqlParameter[]
-                                {
-                                    new SqlParameter("@paymentStatus", paymentStatus),
-                                    new SqlParameter("@orderId", orderId)
-                                });
-
-                                updateCmd.ExecuteNonQuery();
-                            }
-                        }
-                    }
-                }
+                ExecuteNonQuery("sp_UpdateOrderPaymentStatus", parameters, isStoredProcedure: true);
             }
             catch (Exception ex)
             {
-                throw new Exception($"Lỗi cập nhật trạng thái thanh toán đơn hàng: {ex.Message}");
+                throw new Exception($"Lỗi cập nhật trạng thái thanh toán: {ex.Message}");
             }
         }
 

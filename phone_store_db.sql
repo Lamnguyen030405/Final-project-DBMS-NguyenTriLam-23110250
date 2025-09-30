@@ -1444,6 +1444,85 @@ BEGIN
 END
 GO
 
+-- Procedure cập nhật trạng thái thanh toán
+CREATE PROCEDURE sp_UpdateOrderPaymentStatus
+    @orderId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @totalAmount DECIMAL(18,2);
+    DECLARE @paidAmount DECIMAL(18,2);
+    DECLARE @paymentStatus NVARCHAR(20);
+
+    -- Lấy tổng tiền đơn hàng và tổng số tiền đã thanh toán
+    SELECT 
+        @totalAmount = o.total_amount,
+        @paidAmount = COALESCE(SUM(CASE WHEN p.status = 'successful' THEN p.amount ELSE 0 END), 0)
+    FROM orders o
+    LEFT JOIN payments p ON o.order_id = p.order_id
+    WHERE o.order_id = @orderId
+    GROUP BY o.total_amount;
+
+    IF @totalAmount IS NULL
+    BEGIN
+        THROW 50003, 'Không tìm thấy đơn hàng.', 1;
+    END
+
+    -- Xác định trạng thái thanh toán mới
+    SET @paymentStatus = 
+        CASE 
+            WHEN @paidAmount = 0 THEN 'pending'
+            WHEN @paidAmount >= @totalAmount THEN 'paid'
+            ELSE 'partial'
+        END;
+
+    -- Cập nhật trạng thái đơn hàng
+    UPDATE orders
+    SET payment_status = @paymentStatus
+    WHERE order_id = @orderId;
+END
+GO
+
+-- Procedure xóa thanh toán
+CREATE PROCEDURE sp_DeletePayment
+    @paymentId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        -- Lấy order_id từ payment
+        DECLARE @orderId INT;
+
+        SELECT @orderId = order_id
+        FROM payments
+        WHERE payment_id = @paymentId;
+
+        IF @orderId IS NULL
+        BEGIN
+            THROW 50001, 'Không tìm thấy thanh toán để xóa.', 1;
+        END
+
+        -- Xóa payment
+        DELETE FROM payments
+        WHERE payment_id = @paymentId;
+
+        -- Gọi cập nhật trạng thái thanh toán
+        EXEC sp_UpdateOrderPaymentStatus @orderId;
+
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK;
+        DECLARE @msg NVARCHAR(4000) = ERROR_MESSAGE();
+        THROW 50002, @msg, 1;
+    END CATCH
+END
+GO
+
 -- Tạo role cho admin (admin cửa hàng)
 CREATE ROLE db_admin;
 GO
@@ -1508,6 +1587,8 @@ GRANT EXECUTE ON sp_UpdatePromotion TO db_admin;
 GRANT EXECUTE ON GetRevenueReport TO db_admin;
 GRANT EXECUTE ON LoginUser TO db_admin;
 GRANT EXECUTE ON sp_CreateDatabaseUser TO db_admin;
+GRANT EXECUTE ON sp_UpdateOrderPaymentStatus TO db_admin;
+GRANT EXECUTE ON sp_DeletePayment TO db_admin;
 GRANT EXECUTE ON CheckUserRoles TO db_admin;
 
 
@@ -1551,7 +1632,7 @@ GRANT SELECT ON user_roles TO db_manager;
 GRANT INSERT, UPDATE ON customers TO db_manager;
 GRANT INSERT, UPDATE ON orders TO db_manager;
 GRANT INSERT, UPDATE ON order_details TO db_manager;
-GRANT INSERT, UPDATE ON payments TO db_manager;
+GRANT INSERT, DELETE, UPDATE ON payments TO db_manager;
 
 -- Manager có quyền quản lý khuyến mãi và kho
 GRANT INSERT, UPDATE ON promotions TO db_manager;
@@ -1578,6 +1659,8 @@ GRANT EXECUTE ON sp_InsertPromotion TO db_manager;
 GRANT EXECUTE ON sp_UpdatePromotionStatus TO db_manager;
 GRANT EXECUTE ON sp_DeletePromotion TO db_manager;
 GRANT EXECUTE ON sp_UpdatePromotion TO db_manager;
+GRANT EXECUTE ON sp_UpdateOrderPaymentStatus TO db_manager;
+GRANT EXECUTE ON sp_DeletePayment TO db_manager;
 GRANT EXECUTE ON GetRevenueReport TO db_manager;
 GRANT EXECUTE ON CheckUserRoles TO db_manager;
 GRANT EXECUTE ON LoginUser TO db_manager;

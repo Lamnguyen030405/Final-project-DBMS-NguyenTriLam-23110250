@@ -317,6 +317,7 @@ namespace PhoneStore.Forms
                 // Enable/disable action buttons based on order status
                 btnUpdateStatus.Enabled = CanUpdateOrder();
                 btnAddPayment.Enabled = CanAddPayment();
+                btnDeletePayment.Enabled = SessionManager.IsManager; // Thêm dòng này
                 btnPrintInvoice.Enabled = true;
 
                 // Setup tab behavior
@@ -487,6 +488,62 @@ namespace PhoneStore.Forms
             catch (Exception ex)
             {
                 ExceptionHandler.HandleException(ex, "Lỗi xem chi tiết thanh toán");
+            }
+        }
+
+        private void btnDeletePayment_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvPaymentHistory.SelectedRows.Count == 0)
+                {
+                    ExceptionHandler.ShowValidationError("Vui lòng chọn thanh toán cần xóa.");
+                    return;
+                }
+
+                var selectedIndex = dgvPaymentHistory.SelectedRows[0].Index;
+                var payment = orderPayments.OrderByDescending(p => p.PaymentDate).ToList()[selectedIndex];
+
+                // Kiểm tra quyền
+                if (!CanDeletePayment(payment))
+                {
+                    ExceptionHandler.ShowValidationError("Bạn không có quyền xóa thanh toán này.");
+                    return;
+                }
+
+                // Xác nhận xóa
+                var confirmResult = MessageBox.Show(
+                    $"Bạn có chắc chắn muốn xóa thanh toán?\n\n" +
+                    $"Số tiền: {ValidationHelper.FormatCurrency(payment.Amount)}\n" +
+                    $"Ngày: {payment.PaymentDate:dd/MM/yyyy HH:mm}\n" +
+                    $"Phương thức: {GetPaymentMethodText(payment.PaymentMethod)}\n\n" +
+                    $"Lưu ý: Hành động này không thể hoàn tác!",
+                    "Xác nhận xóa thanh toán",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+
+                if (confirmResult != DialogResult.Yes)
+                {
+                    return;
+                }
+
+                // Xóa thanh toán
+                var result = paymentService.DeletePayment(payment.PaymentId);
+
+                if (result.IsSuccess)
+                {
+                    LoadPaymentHistory();
+                    LoadPaymentSummary();
+                    ExceptionHandler.ShowSuccessMessage("Xóa thanh toán thành công!");
+                }
+                else
+                {
+                    ExceptionHandler.ShowValidationError(result.Message);
+                }
+            }
+            catch (Exception ex)
+            {
+                ExceptionHandler.HandleException(ex, "Lỗi xóa thanh toán");
             }
         }
 
@@ -776,6 +833,35 @@ Ngày tạo: {payment.CreatedAt:dd/MM/yyyy HH:mm}";
                 case "premium": return "Cao cấp";
                 default: return type ?? "Thường";
             }
+        }
+
+        private bool CanEditPayment(Payment payment)    
+        {
+            if (payment == null) return false;
+
+            // Chỉ Manager mới được sửa thanh toán
+            if (!SessionManager.IsManager) return false;
+
+            // Không sửa thanh toán đã failed
+            if (payment.Status == "failed") return false;
+
+            // Không sửa thanh toán của đơn hàng đã hủy
+            if (order.OrderStatus == "cancelled") return false;
+
+            return true;
+        }
+
+        private bool CanDeletePayment(Payment payment)
+        {
+            if (payment == null) return false;
+
+            // Chỉ Manager mới được xóa thanh toán
+            if (!SessionManager.IsManager) return false;
+
+            // Không xóa thanh toán của đơn hàng đã hoàn thành
+            if (order.OrderStatus == "completed") return false;
+
+            return true;
         }
     }
 }

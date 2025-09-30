@@ -28,6 +28,7 @@ namespace PhoneStore.Forms
 
             InitializeForm();
             LoadPaymentSummary();
+            //LoadPaymentForEdit(paymentId);
         }
 
         private void InitializeForm()
@@ -101,6 +102,11 @@ namespace PhoneStore.Forms
                 ExceptionHandler.HandleException(ex, "Lỗi tải thông tin thanh toán");
                 this.Close();
             }
+        }
+
+        private void LoadPaymentForEdit(int paymentId)
+        {
+
         }
 
         private void DisplayPaymentSummary()
